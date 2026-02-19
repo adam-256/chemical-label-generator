@@ -1,0 +1,1292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChemLabel Maker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/SmilesDrawer/2.1.7/smiles-drawer.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4f3ef;
+    --surface: #ffffff;
+    --border: #d0cec8;
+    --border-dark: #9a9690;
+    --text: #1a1917;
+    --text-muted: #6b6965;
+    --accent: #e8a010;
+    --accent-dark: #b87d00;
+    --danger: #c0392b;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+    --label-w: 384px; /* 4" at 96dpi */
+    --label-h: 192px; /* 2" at 96dpi */
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr;
+  }
+
+  header {
+    background: var(--text);
+    color: white;
+    padding: 16px 32px;
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    border-bottom: 3px solid var(--accent);
+  }
+  header h1 {
+    font-family: var(--mono);
+    font-size: 1.1rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  header span {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+  }
+
+  .workspace {
+    display: grid;
+    grid-template-columns: 400px 1fr;
+    height: calc(100vh - 57px);
+    overflow: hidden;
+  }
+
+  /* ---- LEFT PANEL ---- */
+  .panel {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .panel-section {
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .panel-section:last-child { border-bottom: none; }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 5px;
+    font-family: var(--mono);
+  }
+
+  input[type="text"], textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    background: var(--bg);
+    color: var(--text);
+    transition: border-color 0.15s;
+    outline: none;
+  }
+  input[type="text"]:focus, textarea:focus {
+    border-color: var(--accent);
+    background: white;
+  }
+
+  .input-group { margin-bottom: 14px; }
+
+  /* Chemical component */
+  .chem-component {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 12px;
+    margin-bottom: 10px;
+    position: relative;
+  }
+  .chem-component-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .chem-component-label {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .chem-status {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    padding: 2px 7px;
+    border-radius: 10px;
+    background: #e0e0e0;
+    color: var(--text-muted);
+  }
+  .chem-status.ok { background: #d4edda; color: #155724; }
+  .chem-status.loading { background: #fff3cd; color: #856404; }
+  .chem-status.error { background: #f8d7da; color: #721c24; }
+
+  .btn {
+    padding: 8px 14px;
+    border: none;
+    border-radius: 3px;
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.04em;
+  }
+  .btn-primary {
+    background: var(--text);
+    color: white;
+  }
+  .btn-primary:hover { background: #333; }
+  .btn-accent {
+    background: var(--accent);
+    color: var(--text);
+  }
+  .btn-accent:hover { background: var(--accent-dark); color: white; }
+  .btn-sm {
+    padding: 4px 10px;
+    font-size: 0.7rem;
+  }
+  .btn-danger {
+    background: transparent;
+    color: var(--danger);
+    border: 1px solid var(--danger);
+  }
+  .btn-danger:hover { background: var(--danger); color: white; }
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { background: var(--bg); color: var(--text); }
+
+  .btn-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+
+  /* GHS hazard pills */
+  .hazard-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 6px;
+    min-height: 24px;
+  }
+  .hazard-pill {
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    padding: 2px 8px;
+    background: #fff3cd;
+    border: 1px solid var(--accent);
+    border-radius: 2px;
+    color: var(--accent-dark);
+    font-weight: 600;
+  }
+
+  /* Sheet grid */
+  .sheet-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  .sheet-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    padding: 12px;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+  }
+  .sheet-cell {
+    width: 120px;
+    height: 60px;
+    border: 1.5px dashed var(--border);
+    border-radius: 3px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    transition: all 0.15s;
+    position: relative;
+    overflow: hidden;
+    text-align: center;
+    padding: 4px;
+  }
+  .sheet-cell:hover { border-color: var(--accent); color: var(--accent-dark); background: #fff8e8; }
+  .sheet-cell.selected {
+    border-color: var(--accent);
+    border-style: solid;
+    background: var(--accent);
+    color: var(--text);
+    font-weight: 600;
+  }
+  .sheet-cell.used {
+    background: #f0f0f0;
+    border-color: #ccc;
+    border-style: solid;
+    color: #aaa;
+    cursor: default;
+    text-decoration: line-through;
+  }
+  .sheet-cell.used:hover { background: #f0f0f0; color: #aaa; border-color: #ccc; }
+  .cell-num {
+    position: absolute;
+    top: 3px;
+    left: 4px;
+    font-size: 0.55rem;
+    opacity: 0.5;
+  }
+
+  .sheet-hint {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    text-align: center;
+  }
+  .sheet-legend {
+    display: flex;
+    gap: 12px;
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+  .legend-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+
+  /* Footer fields */
+  .footer-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .footer-field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 6px;
+    align-items: center;
+  }
+  .preset-btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 10px;
+  }
+  .preset-btn {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    background: var(--bg);
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all 0.15s;
+  }
+  .preset-btn:hover, .preset-btn.active {
+    background: var(--text);
+    color: white;
+    border-color: var(--text);
+  }
+
+  /* ---- RIGHT PANEL / PREVIEW ---- */
+  .preview-area {
+    background: #ddd;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px;
+    gap: 32px;
+    background-image:
+      linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  .preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 860px;
+  }
+  .preview-title {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    color: #666;
+    text-transform: uppercase;
+  }
+
+  /* The actual sheet representation at screen scale */
+  .sheet-preview {
+    background: white;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+    position: relative;
+    /* Letter: 8.5" x 11" — at 96dpi scaled to fit */
+    width: 816px;  /* 8.5 * 96 */
+    height: 1056px; /* 11 * 96 */
+    flex-shrink: 0;
+  }
+
+  /* Avery 5163: 10 labels, 2 col x 5 row, 4"x2" each, margins: top 0.5", left 0.15", right 0.15" */
+  .label-grid {
+    position: absolute;
+    /* At 96dpi: top=0.5"=48px, left/right=0.15"≈14px */
+    top: 48px;
+    left: 14px;
+    right: 14px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: repeat(5, 192px);
+    gap: 0;
+  }
+
+  .label-cell {
+    width: 100%;
+    height: 192px;
+    border: 1px dashed #ccc;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: stretch;
+  }
+
+  .label-cell.empty {
+    background: transparent;
+  }
+
+  .label-cell.used-cell {
+    background: repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 6px,
+      rgba(0,0,0,0.04) 6px,
+      rgba(0,0,0,0.04) 12px
+    );
+  }
+
+  /* The actual label content */
+  .label-content {
+    width: 100%;
+    height: 100%;
+    padding: 6px 8px 5px;
+    display: flex;
+    flex-direction: column;
+    font-family: Arial, Helvetica, sans-serif; /* Labels use standard print fonts */
+    position: relative;
+  }
+
+  .label-name {
+    text-align: center;
+    font-weight: bold;
+    font-size: 11px;
+    line-height: 1.2;
+    margin-bottom: 4px;
+    border-bottom: 1px solid #333;
+    padding-bottom: 3px;
+  }
+
+  .label-body {
+    display: flex;
+    flex: 1;
+    gap: 6px;
+    min-height: 0;
+  }
+
+  .label-left {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .label-subheader {
+    font-style: italic;
+    font-size: 8px;
+    color: #333;
+    margin-bottom: 2px;
+    font-weight: 600;
+  }
+
+  .label-structures {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .structure-canvas-wrapper {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+  }
+
+  .structure-canvas-wrapper canvas {
+    max-width: 100%;
+    max-height: 100%;
+  }
+
+  .label-right {
+    width: 72px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .hazard-symbols {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    flex: 1;
+    width: 100%;
+  }
+
+  .ghs-symbol {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+  }
+
+  .label-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 10px;
+    border-top: 1px solid #ccc;
+    margin-top: 3px;
+    padding-top: 2px;
+  }
+
+  .footer-item {
+    font-size: 7px;
+    color: #333;
+    white-space: nowrap;
+  }
+  .footer-item strong {
+    font-weight: 700;
+  }
+
+  .print-btn-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  /* GHS SVG symbols inline */
+  .ghs-svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Concentration optional display */
+  .struct-label {
+    font-size: 7px;
+    color: #555;
+    font-style: italic;
+  }
+
+  @media print {
+    body { background: white; }
+    header, .workspace > .panel, .preview-header { display: none !important; }
+    .workspace { display: block; height: auto; }
+    .preview-area {
+      background: white;
+      padding: 0;
+      display: block;
+    }
+    .sheet-preview {
+      box-shadow: none;
+      page-break-after: always;
+    }
+    .label-cell { border: 1px dashed #bbb; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>ChemLabel Maker</h1>
+  <span>Avery 5163 · 2×5 · Letter</span>
+</header>
+
+<div class="workspace">
+  <!-- LEFT PANEL -->
+  <div class="panel" id="panel">
+
+    <!-- LABEL EDITOR -->
+    <div class="panel-section">
+      <div class="section-label">Label Editor</div>
+
+      <div class="input-group">
+        <label>Label Name (Header)</label>
+        <input type="text" id="labelName" placeholder="e.g. Phosphate Buffer Saline" oninput="updatePreview()">
+      </div>
+
+      <div id="chemComponents"></div>
+      <button class="btn btn-ghost btn-sm" onclick="addChemComponent()">+ Add Chemical Component</button>
+    </div>
+
+    <!-- FOOTER FIELDS -->
+    <div class="panel-section">
+      <div class="section-label">Footer Fields</div>
+      <div class="preset-btns" id="presetBtns">
+        <button class="preset-btn" onclick="addPreset('Laboratory')">Laboratory</button>
+        <button class="preset-btn" onclick="addPreset('Experiment')">Experiment</button>
+        <button class="preset-btn" onclick="addPreset('Lot #')">Lot #</button>
+        <button class="preset-btn" onclick="addPreset('Date Prepared')">Date Prepared</button>
+        <button class="preset-btn" onclick="addPreset('Prepared By')">Prepared By</button>
+        <button class="preset-btn" onclick="addPreset('Concentration')">Concentration</button>
+        <button class="preset-btn" onclick="addPreset('Expiry')">Expiry</button>
+        <button class="preset-btn" onclick="addPreset('Storage')">Storage</button>
+        <button class="preset-btn" onclick="addPreset('Custom...')">Custom…</button>
+      </div>
+      <div class="footer-fields" id="footerFields"></div>
+    </div>
+
+    <!-- SHEET SELECTOR -->
+    <div class="panel-section">
+      <div class="section-label">Assign to Cell</div>
+      <p style="font-size:0.72rem; color:var(--text-muted); margin-bottom:12px; font-family:var(--mono);">
+        Click a cell to place this label. Right-click to mark as used/unavailable.
+      </p>
+      <div class="sheet-container">
+        <div class="sheet-grid" id="miniGrid"></div>
+        <div class="sheet-legend">
+          <span><span class="legend-dot" style="background:var(--accent);border:1px solid var(--accent-dark)"></span>Selected</span>
+          <span><span class="legend-dot" style="background:#e8e8e8;border:1px solid #ccc"></span>Used/N/A</span>
+          <span><span class="legend-dot" style="background:white;border:1.5px dashed var(--border)"></span>Available</span>
+        </div>
+        <div class="sheet-hint">Left-click: assign label · Right-click: toggle used</div>
+      </div>
+    </div>
+
+    <!-- ACTIONS -->
+    <div class="panel-section">
+      <div class="section-label">Actions</div>
+      <div class="btn-row">
+        <button class="btn btn-accent" onclick="addLabelToSheet()">Place Label on Sheet</button>
+        <button class="btn btn-ghost btn-sm" onclick="clearLabel()">Clear Form</button>
+      </div>
+      <div style="margin-top:12px;">
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="window.print()">🖨 Print Sheet</button>
+          <button class="btn btn-ghost btn-sm" onclick="clearSheet()">Reset Sheet</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT PANEL: PREVIEW -->
+  <div class="preview-area">
+    <div class="preview-header">
+      <span class="preview-title">Sheet Preview — Avery 5163</span>
+      <span style="font-family:var(--mono);font-size:0.65rem;color:#888;">8.5" × 11" · 2 col × 5 row · 4"×2" labels</span>
+    </div>
+    <div class="sheet-preview">
+      <div class="label-grid" id="labelGrid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- GHS Symbol SVGs as data URIs -->
+<div id="ghsSymbolStore" style="display:none"></div>
+
+<script>
+// ========== STATE ==========
+const state = {
+  cells: Array(10).fill(null), // null=empty, 'used'=used, object=label data
+  currentLabel: {
+    name: '',
+    chemicals: [],
+    footer: []
+  },
+  selectedCell: null
+};
+
+// GHS hazard symbol SVGs (inline data — standard GHS pictograms)
+const GHS_SYMBOLS = {
+  'GHS01': { label: 'Explosive', color: '#ff0000' },
+  'GHS02': { label: 'Flammable', color: '#ff6600' },
+  'GHS03': { label: 'Oxidizing', color: '#ff6600' },
+  'GHS04': { label: 'Compressed Gas', color: '#0066cc' },
+  'GHS05': { label: 'Corrosive', color: '#333333' },
+  'GHS06': { label: 'Toxic', color: '#333333' },
+  'GHS07': { label: 'Irritant', color: '#ff6600' },
+  'GHS08': { label: 'Health Hazard', color: '#cc0066' },
+  'GHS09': { label: 'Environmental', color: '#006633' },
+};
+
+// Fetch GHS symbols from PubChem image endpoint
+const GHS_IMG_BASE = 'https://pubchem.ncbi.nlm.nih.gov/images/ghs/';
+
+// Map PubChem GHS codes to image filenames
+const GHS_FILENAMES = {
+  'GHS01': 'GHS01.svg',
+  'GHS02': 'GHS02.svg',
+  'GHS03': 'GHS03.svg',
+  'GHS04': 'GHS04.svg',
+  'GHS05': 'GHS05.svg',
+  'GHS06': 'GHS06.svg',
+  'GHS07': 'GHS07.svg',
+  'GHS08': 'GHS08.svg',
+  'GHS09': 'GHS09.svg',
+};
+
+// SmilesDrawer instance cache
+const drawerCache = {};
+
+// ========== INIT ==========
+function init() {
+  buildMiniGrid();
+  buildLabelGrid();
+  addChemComponent();
+}
+
+// ========== MINI GRID (cell selector) ==========
+function buildMiniGrid() {
+  const grid = document.getElementById('miniGrid');
+  grid.innerHTML = '';
+  for (let i = 0; i < 10; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'sheet-cell';
+    cell.dataset.index = i;
+
+    const num = document.createElement('span');
+    num.className = 'cell-num';
+    num.textContent = i + 1;
+    cell.appendChild(num);
+
+    const label = document.createElement('span');
+    cell.appendChild(label);
+
+    if (state.cells[i] === 'used') {
+      cell.classList.add('used');
+      label.textContent = 'USED';
+    } else if (state.cells[i] && state.cells[i] !== 'used') {
+      cell.classList.add('selected');
+      label.textContent = state.cells[i].name || 'Label';
+    }
+
+    if (state.selectedCell === i) {
+      cell.style.outline = '2px solid var(--accent-dark)';
+    }
+
+    cell.addEventListener('click', () => selectCell(i));
+    cell.addEventListener('contextmenu', (e) => { e.preventDefault(); toggleUsed(i); });
+    grid.appendChild(cell);
+  }
+}
+
+function selectCell(i) {
+  if (state.cells[i] === 'used') return;
+  state.selectedCell = i;
+  buildMiniGrid();
+}
+
+function toggleUsed(i) {
+  if (state.cells[i] === 'used') {
+    state.cells[i] = null;
+  } else if (!state.cells[i]) {
+    state.cells[i] = 'used';
+    if (state.selectedCell === i) state.selectedCell = null;
+  }
+  buildMiniGrid();
+  buildLabelGrid();
+}
+
+// ========== LABEL GRID (sheet preview) ==========
+function buildLabelGrid() {
+  const grid = document.getElementById('labelGrid');
+  grid.innerHTML = '';
+  for (let i = 0; i < 10; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'label-cell';
+    cell.dataset.index = i;
+
+    const cellData = state.cells[i];
+    if (cellData === 'used') {
+      cell.classList.add('used-cell');
+    } else if (cellData && cellData !== 'used') {
+      cell.classList.add('filled');
+      cell.appendChild(buildLabelDOM(cellData, i));
+    } else {
+      cell.classList.add('empty');
+    }
+    grid.appendChild(cell);
+  }
+}
+
+function buildLabelDOM(labelData, cellIndex) {
+  const content = document.createElement('div');
+  content.className = 'label-content';
+
+  // Header
+  const name = document.createElement('div');
+  name.className = 'label-name';
+  name.textContent = labelData.name || 'Unnamed Solution';
+  content.appendChild(name);
+
+  // Body
+  const body = document.createElement('div');
+  body.className = 'label-body';
+
+  // Left: molecular formula + structures
+  const left = document.createElement('div');
+  left.className = 'label-left';
+
+  const subheaderL = document.createElement('div');
+  subheaderL.className = 'label-subheader';
+  subheaderL.textContent = 'Molecular Formula:';
+  left.appendChild(subheaderL);
+
+  const structs = document.createElement('div');
+  structs.className = 'label-structures';
+
+  // Right: hazard symbols
+  const right = document.createElement('div');
+  right.className = 'label-right';
+
+  const subheaderR = document.createElement('div');
+  subheaderR.className = 'label-subheader';
+  subheaderR.style.textAlign = 'center';
+  subheaderR.textContent = 'Hazard Symbol(s):';
+  right.appendChild(subheaderR);
+
+  const hazardSymbols = document.createElement('div');
+  hazardSymbols.className = 'hazard-symbols';
+  right.appendChild(hazardSymbols);
+
+  body.appendChild(left);
+  body.appendChild(right);
+  left.appendChild(structs);
+
+  // Render chemicals
+  const allGHS = new Set();
+  const numChems = labelData.chemicals.length;
+  const structHeight = numChems > 0 ? Math.max(40, Math.min(80, 110 / numChems)) : 80;
+
+  labelData.chemicals.forEach((chem, idx) => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'structure-canvas-wrapper';
+    wrapper.style.height = structHeight + 'px';
+    wrapper.style.maxHeight = structHeight + 'px';
+    wrapper.style.flexShrink = '1';
+
+    if (chem.smiles) {
+      const canvasId = `canvas-c${cellIndex}-${idx}-${Date.now()}`;
+      const canvas = document.createElement('canvas');
+      canvas.id = canvasId;
+      canvas.width = 140;
+      canvas.height = structHeight;
+      canvas.style.maxHeight = structHeight + 'px';
+      wrapper.appendChild(canvas);
+
+      // Draw structure
+      setTimeout(() => {
+        try {
+          const drawer = new SmilesDrawer.Drawer({
+            width: 140,
+            height: structHeight,
+            bondThickness: 1,
+            fontSize: 7,
+            padding: 4,
+            themes: {
+              light: {
+                C: '#222', O: '#e00', N: '#00a', S: '#880', P: '#a50',
+                H: '#555', DEFAULT: '#222',
+                background: 'transparent'
+              }
+            }
+          });
+          SmilesDrawer.parse(chem.smiles, (tree) => {
+            drawer.draw(tree, canvasId, 'light', false);
+          }, (err) => {
+            canvas.getContext('2d').fillText('?', 10, 20);
+          });
+        } catch(e) {}
+      }, 50);
+    } else {
+      const placeholder = document.createElement('span');
+      placeholder.style.cssText = 'font-size:7px;color:#999;font-style:italic;';
+      placeholder.textContent = chem.name || '—';
+      wrapper.appendChild(placeholder);
+    }
+
+    // Add formula text as small label below structure
+    if (chem.formula) {
+      const fl = document.createElement('div');
+      fl.className = 'struct-label';
+      fl.innerHTML = formatFormula(chem.formula);
+      wrapper.appendChild(fl);
+    }
+
+    structs.appendChild(wrapper);
+
+    // Collect GHS
+    (chem.ghs || []).forEach(g => allGHS.add(g));
+  });
+
+  // Render GHS symbols
+  const ghsArr = Array.from(allGHS);
+  const symSize = ghsArr.length > 4 ? 24 : ghsArr.length > 2 ? 30 : 36;
+  ghsArr.forEach(code => {
+    const img = document.createElement('img');
+    img.className = 'ghs-symbol';
+    img.style.width = symSize + 'px';
+    img.style.height = symSize + 'px';
+    // Use PubChem GHS images
+    img.src = `https://pubchem.ncbi.nlm.nih.gov/images/ghs/${code}.svg`;
+    img.title = code;
+    img.onerror = function() {
+      // Fallback: draw text
+      this.style.display = 'none';
+      const fb = document.createElement('div');
+      fb.style.cssText = `width:${symSize}px;height:${symSize}px;border:2px solid #c00;display:flex;align-items:center;justify-content:center;font-size:6px;font-weight:bold;color:#c00;transform:rotate(45deg);`;
+      fb.textContent = code.replace('GHS','');
+      this.parentNode.insertBefore(fb, this.nextSibling);
+    };
+    hazardSymbols.appendChild(img);
+  });
+
+  content.appendChild(body);
+
+  // Footer
+  if (labelData.footer && labelData.footer.length > 0) {
+    const footer = document.createElement('div');
+    footer.className = 'label-footer';
+    labelData.footer.forEach(f => {
+      if (f.value) {
+        const item = document.createElement('span');
+        item.className = 'footer-item';
+        item.innerHTML = `<strong>${f.key}:</strong> ${f.value}`;
+        footer.appendChild(item);
+      }
+    });
+    content.appendChild(footer);
+  }
+
+  return content;
+}
+
+function formatFormula(f) {
+  // Subscript numbers in formula
+  return f.replace(/(\d+)/g, '<sub>$1</sub>');
+}
+
+// ========== CHEMICAL COMPONENTS ==========
+let chemCount = 0;
+function addChemComponent() {
+  chemCount++;
+  const id = chemCount;
+  const container = document.getElementById('chemComponents');
+  const div = document.createElement('div');
+  div.className = 'chem-component';
+  div.dataset.chemId = id;
+  div.innerHTML = `
+    <div class="chem-component-header">
+      <span class="chem-component-label">Component ${id}</span>
+      <span class="chem-status" id="status-${id}">pending</span>
+    </div>
+    <div class="input-group">
+      <label>Chemical Name (for lookup)</label>
+      <input type="text" id="chemName-${id}" placeholder="e.g. sodium chloride" 
+             oninput="scheduleChemLookup(${id})">
+    </div>
+    <div class="input-group" style="margin-top:-6px;">
+      <label>Display Formula (override, optional)</label>
+      <input type="text" id="chemFormula-${id}" placeholder="auto-filled from lookup" 
+             oninput="updatePreview()">
+    </div>
+    <div class="input-group" style="margin-top:-6px;">
+      <label>SMILES override <span style="font-weight:400;color:#aaa">— paste if lookup fails</span></label>
+      <input type="text" id="chemSmiles-${id}" placeholder="e.g. O  (water)   [Na+].[Cl-]  (NaCl)"
+             oninput="onSmilesOverride(${id})">
+    </div>
+    <div>
+      <label>GHS Hazard Codes</label>
+      <div class="hazard-list" id="hazards-${id}"></div>
+    </div>
+    <div class="btn-row" style="margin-top:8px;">
+      <button class="btn btn-ghost btn-sm" onclick="lookupChem(${id})">🔍 Lookup</button>
+      ${id > 1 ? `<button class="btn btn-danger btn-sm" onclick="removeChemComponent(${id})">Remove</button>` : ''}
+    </div>
+  `;
+  container.appendChild(div);
+}
+
+function onSmilesOverride(id) {
+  const smilesInput = document.getElementById(`chemSmiles-${id}`);
+  const nameInput = document.getElementById(`chemName-${id}`);
+  if (smilesInput.value.trim()) {
+    nameInput.dataset.smiles = smilesInput.value.trim();
+    const statusEl = document.getElementById(`status-${id}`);
+    statusEl.textContent = 'smiles set';
+    statusEl.className = 'chem-status ok';
+  }
+  updatePreview();
+}
+
+function removeChemComponent(id) {
+  document.querySelector(`[data-chem-id="${id}"]`).remove();
+  updatePreview();
+}
+
+let lookupTimers = {};
+function scheduleChemLookup(id) {
+  updatePreview();
+  clearTimeout(lookupTimers[id]);
+  lookupTimers[id] = setTimeout(() => lookupChem(id), 800);
+}
+
+// JSONP helper — bypasses CORS entirely, works from file:// and any origin
+function fetchJSONP(url, callbackParam = 'callback') {
+  return new Promise((resolve, reject) => {
+    const cbName = '_pc_' + Math.random().toString(36).slice(2);
+    const script = document.createElement('script');
+    const timeout = setTimeout(() => {
+      delete window[cbName];
+      script.remove();
+      reject(new Error('JSONP timeout'));
+    }, 10000);
+    window[cbName] = (data) => {
+      clearTimeout(timeout);
+      delete window[cbName];
+      script.remove();
+      resolve(data);
+    };
+    script.src = url + (url.includes('?') ? '&' : '?') + callbackParam + '=' + cbName;
+    script.onerror = () => {
+      clearTimeout(timeout);
+      delete window[cbName];
+      script.remove();
+      reject(new Error('JSONP script error'));
+    };
+    document.head.appendChild(script);
+  });
+}
+
+// Try fetch first (works when served over HTTP), fall back to JSONP (works from file://)
+async function pubchemGet(path) {
+  const base = 'https://pubchem.ncbi.nlm.nih.gov/rest/pug';
+  const url = base + path;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (fetchErr) {
+    // fetch failed (likely CORS from file://) — try JSONP
+    console.warn('fetch failed, trying JSONP:', fetchErr.message);
+    return await fetchJSONP(url);
+  }
+}
+
+async function lookupChem(id) {
+  const nameInput = document.getElementById(`chemName-${id}`);
+  const name = nameInput.value.trim();
+  if (!name) return;
+
+  const statusEl = document.getElementById(`status-${id}`);
+  statusEl.textContent = 'loading…';
+  statusEl.className = 'chem-status loading';
+
+  try {
+    // Step 1: Get CID
+    let cidData;
+    try {
+      cidData = await pubchemGet(`/compound/name/${encodeURIComponent(name)}/cids/JSON`);
+    } catch(e) {
+      throw new Error(`CID lookup failed: ${e.message}`);
+    }
+
+    if (!cidData?.IdentifierList?.CIDs?.length) throw new Error('No CID returned');
+    const cid = cidData.IdentifierList.CIDs[0];
+
+    // Step 2: Get SMILES + formula
+    let propData;
+    try {
+      propData = await pubchemGet(`/compound/cid/${cid}/property/IsomericSMILES,CanonicalSMILES,MolecularFormula/JSON`);
+    } catch(e) {
+      throw new Error(`Properties lookup failed: ${e.message}`);
+    }
+
+    const props = propData?.PropertyTable?.Properties?.[0];
+    if (!props) throw new Error('No properties returned');
+
+    const smiles = props.IsomericSMILES || props.CanonicalSMILES || '';
+    const formula = props.MolecularFormula || '';
+
+    // Auto-fill formula input
+    const formulaInput = document.getElementById(`chemFormula-${id}`);
+    if (!formulaInput.dataset.manualOverride) {
+      formulaInput.value = formula;
+    }
+
+    nameInput.dataset.smiles = smiles;
+    nameInput.dataset.formula = formula;
+    nameInput.dataset.cid = cid;
+
+    statusEl.textContent = `ok (CID ${cid})`;
+    statusEl.className = 'chem-status ok';
+
+    // Step 3: Fetch GHS (non-blocking — don't fail lookup if this fails)
+    fetchGHS(id, cid).catch(e => console.warn('GHS fetch failed:', e));
+
+    updatePreview();
+
+  } catch(e) {
+    console.error('lookupChem error:', e);
+    statusEl.textContent = `error: ${e.message}`;
+    statusEl.className = 'chem-status error';
+    // Show diagnostic tip
+    const hazardsEl = document.getElementById(`hazards-${id}`);
+    if (hazardsEl) {
+      hazardsEl.innerHTML = `<span style="font-size:0.65rem;color:#c0392b;font-family:var(--mono);">
+        Open browser console (F12) for details. If running from a file://, try serving over HTTP:<br>
+        <code>python -m http.server 8080</code>
+      </span>`;
+    }
+  }
+}
+
+async function fetchGHS(id, cid) {
+  const hazardsEl = document.getElementById(`hazards-${id}`);
+  hazardsEl.innerHTML = '<span style="font-size:0.65rem;color:var(--text-muted);font-family:var(--mono);">fetching GHS…</span>';
+
+  // Use the safety data summary endpoint — smaller payload, more reliable
+  let data;
+  try {
+    data = await pubchemGet(`/compound/cid/${cid}/JSON`);
+  } catch(e) {
+    // Try pug_view as fallback
+    try {
+      const base = 'https://pubchem.ncbi.nlm.nih.gov/rest/pug_view';
+      const url = `${base}/data/compound/${cid}/JSON?heading=GHS+Classification`;
+      const res = await fetch(url);
+      data = await res.json();
+    } catch(e2) {
+      hazardsEl.innerHTML = '<span style="font-size:0.65rem;color:var(--text-muted);font-family:var(--mono);">GHS data unavailable</span>';
+      return;
+    }
+  }
+
+  const ghsCodes = new Set();
+  // Regex search the whole JSON string for GHS pictogram codes — most reliable approach
+  const str = JSON.stringify(data);
+  const matches = str.match(/GHS0[1-9]/g);
+  if (matches) matches.forEach(m => ghsCodes.add(m));
+
+  const nameInput = document.getElementById(`chemName-${id}`);
+  if (nameInput) nameInput.dataset.ghs = JSON.stringify([...ghsCodes]);
+
+  hazardsEl.innerHTML = '';
+  if (ghsCodes.size === 0) {
+    hazardsEl.innerHTML = '<span style="font-size:0.65rem;color:var(--text-muted);font-family:var(--mono);">no GHS hazards listed</span>';
+    return;
+  }
+
+  ghsCodes.forEach(code => {
+    const pill = document.createElement('span');
+    pill.className = 'hazard-pill';
+    pill.textContent = code + (GHS_SYMBOLS[code] ? ' · ' + GHS_SYMBOLS[code].label : '');
+    hazardsEl.appendChild(pill);
+  });
+}
+
+// ========== FOOTER FIELDS ==========
+const activePresets = new Set();
+
+function addPreset(preset) {
+  if (preset === 'Custom…') {
+    addFooterField('', '');
+    return;
+  }
+  if (activePresets.has(preset)) return;
+  activePresets.add(preset);
+  document.querySelectorAll('.preset-btn').forEach(b => {
+    if (b.textContent.trim() === preset) b.classList.add('active');
+  });
+  addFooterField(preset, '');
+}
+
+function addFooterField(key, value) {
+  const container = document.getElementById('footerFields');
+  const row = document.createElement('div');
+  row.className = 'footer-field-row';
+  const keyInput = document.createElement('input');
+  keyInput.type = 'text';
+  keyInput.placeholder = 'Field name';
+  keyInput.value = key;
+  keyInput.oninput = () => updatePreview();
+
+  const valInput = document.createElement('input');
+  valInput.type = 'text';
+  valInput.placeholder = 'Value';
+  valInput.value = value;
+  valInput.oninput = () => updatePreview();
+
+  const removeBtn = document.createElement('button');
+  removeBtn.className = 'btn btn-danger btn-sm';
+  removeBtn.textContent = '✕';
+  removeBtn.onclick = () => {
+    const k = keyInput.value;
+    activePresets.delete(k);
+    document.querySelectorAll('.preset-btn').forEach(b => {
+      if (b.textContent.trim() === k) b.classList.remove('active');
+    });
+    row.remove();
+    updatePreview();
+  };
+
+  row.appendChild(keyInput);
+  row.appendChild(valInput);
+  row.appendChild(removeBtn);
+  container.appendChild(row);
+}
+
+// ========== COLLECT CURRENT LABEL ==========
+function collectLabel() {
+  const name = document.getElementById('labelName').value.trim();
+  const chemicals = [];
+
+  document.querySelectorAll('.chem-component').forEach(comp => {
+    const id = comp.dataset.chemId;
+    const nameInput = document.getElementById(`chemName-${id}`);
+    const formulaInput = document.getElementById(`chemFormula-${id}`);
+    const smilesOverride = document.getElementById(`chemSmiles-${id}`);
+    const smiles = (smilesOverride && smilesOverride.value.trim()) || nameInput.dataset.smiles || '';
+    chemicals.push({
+      name: nameInput.value.trim(),
+      smiles: smiles,
+      formula: formulaInput.value.trim() || nameInput.dataset.formula || '',
+      ghs: JSON.parse(nameInput.dataset.ghs || '[]')
+    });
+  });
+
+  const footer = [];
+  document.querySelectorAll('.footer-field-row').forEach(row => {
+    const inputs = row.querySelectorAll('input');
+    footer.push({ key: inputs[0].value.trim(), value: inputs[1].value.trim() });
+  });
+
+  return { name, chemicals, footer };
+}
+
+// ========== PLACE LABEL ==========
+function addLabelToSheet() {
+  if (state.selectedCell === null) {
+    alert('Please click a cell in the sheet selector first.');
+    return;
+  }
+  const label = collectLabel();
+  if (!label.name) {
+    alert('Please enter a label name first.');
+    return;
+  }
+  state.cells[state.selectedCell] = label;
+  buildMiniGrid();
+  buildLabelGrid();
+}
+
+function updatePreview() {
+  // Live preview of current label in selected cell (if selected)
+  // We just rebuild but don't commit — show a "draft" overlay
+  // For simplicity, the preview updates only on "Place Label"
+  // (Rebuilding live with canvas is complex due to async rendering)
+}
+
+function clearLabel() {
+  document.getElementById('labelName').value = '';
+  document.getElementById('chemComponents').innerHTML = '';
+  document.getElementById('footerFields').innerHTML = '';
+  chemCount = 0;
+  activePresets.clear();
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  addChemComponent();
+}
+
+function clearSheet() {
+  if (!confirm('Clear all labels from the sheet?')) return;
+  state.cells = Array(10).fill(null);
+  state.selectedCell = null;
+  buildMiniGrid();
+  buildLabelGrid();
+}
+
+init();
+
+// Warn if running from file:// (CORS will block PubChem)
+if (window.location.protocol === 'file:') {
+  const banner = document.createElement('div');
+  banner.style.cssText = 'background:#fff3cd;border-bottom:2px solid #e8a010;padding:8px 20px;font-family:var(--mono);font-size:0.72rem;color:#856404;display:flex;justify-content:space-between;align-items:center;';
+  banner.innerHTML = `
+    <span>⚠ Running from <code>file://</code> — PubChem lookup may be blocked by browser CORS policy.
+    If lookup fails, serve the file over HTTP: <code>python -m http.server 8080</code> then open <code>http://localhost:8080</code>.
+    You can also paste SMILES manually in the override field.</span>
+    <button onclick="this.parentNode.remove()" style="border:none;background:none;cursor:pointer;font-size:1rem;color:#856404;">✕</button>
+  `;
+  document.body.insertBefore(banner, document.body.firstChild);
+}
+</script>
+</body>
+</html>
