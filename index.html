@@ -1059,8 +1059,8 @@ async function lookupChem(id) {
       throw new Error(`CID lookup failed: ${e.message}`);
     }
 
-    if (!cidData?.IdentifierList?.CIDs?.length) throw new Error('No CID returned');
-    const cid = cidData.IdentifierList.CIDs[0];
+    if (!cidData?.IdentifierList?.CID?.length) throw new Error('No CID returned');
+    const cid = cidData.IdentifierList.CID[0];
 
     // Step 2: Get SMILES + formula
     let propData;
