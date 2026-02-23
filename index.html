@@ -507,6 +507,7 @@
     margin-bottom: 2px;
     margin-top: 4px;
     font-weight: 400;
+    text-align: center;
   }
 
   /* Reserve manufacturer row space even if empty */
@@ -537,7 +538,7 @@
 
   /* Right hazard column — fixed width, never shrinks */
   .label-right {
-    width: 72px;
+    width: 80px;
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
@@ -555,6 +556,7 @@
     flex: 1;
     width: 100%;
     overflow: hidden;
+    box-sizing: border-box;
   }
 
   .ghs-symbol {
@@ -563,16 +565,18 @@
 
   .label-footer {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0 10px;
+    flex-wrap: nowrap;
+    justify-content: space-evenly;
+    align-items: center;
     border-top: 1px solid #ccc;
     margin-top: 3px;
     padding-top: 2px;
+    width: 100%;
   }
   .footer-item {
-    font-size: 7px;
     color: #333;
     white-space: nowrap;
+    text-align: center;
   }
   .footer-item strong { font-weight: 700; }
 
@@ -706,7 +710,7 @@ const TYPO_DEFAULTS = {
   header:       { font: 'Calibri, Arial, sans-serif', size: 16, bold: true,  italic: false, underline: false },
   manufacturer: { font: 'Calibri, Arial, sans-serif', size: 12, bold: false, italic: false, underline: false },
   subheader:    { font: 'Calibri, Arial, sans-serif', size: 12, bold: false, italic: true,  underline: false },
-  footer:       { font: 'Calibri, Arial, sans-serif', size: 7,  bold: false, italic: false, underline: false },
+  footer:       { font: 'Calibri, Arial, sans-serif', size: 12, bold: false, italic: false, underline: false },
 };
 
 const TYPO_LABELS = {
@@ -945,7 +949,6 @@ function buildLabelDOM(labelData, cellIndex) {
 
   const subheaderR = document.createElement('div');
   subheaderR.className = 'label-subheader';
-  subheaderR.style.textAlign = 'center';
   subheaderR.textContent = 'Hazard Symbol(s):';
   applyTypo(subheaderR, 'subheader');
   right.appendChild(subheaderR);
@@ -1021,9 +1024,8 @@ function buildLabelDOM(labelData, cellIndex) {
 
   // GHS symbols — flow L→R, wrap, centered within fixed right column
   const ghsArr = Array.from(allGHS);
-  // Fit within 72px column: 2 per row max. Size so 2 fit (72px - 2px gap) / 2 = 35px
-  // For 5+ symbols drop to 30px so they still fit
-  const symSize = ghsArr.length > 4 ? 30 : 34;
+  // Fit within 72px column: 2 per row max. Size so 2 f4 per row in 80px col: 4*18 + 3*2 = 78px. Larger when fewer.
+  const symSize = ghsArr.length >= 4 ? 18 : ghsArr.length === 3 ? 24 : 36;
   ghsArr.forEach(code => {
     const img = document.createElement('img');
     img.className = 'ghs-symbol';
@@ -1323,9 +1325,9 @@ async function fetchGHS(id, cid) {
 const activePresets = new Set();
 
 const PRESET_PLACEHOLDERS = {
-  'Lot': 'HCL-2025-25-09',
-  'Lab': 'CHMG-145',
-  'EXP': 'CC',
+  'Lot': 'e.g. HCL-2025-25-09',
+  'Lab': 'e.g. CHMG-145',
+  'EXP': 'e.g. CC',
 };
 
 function addPreset(preset) {
