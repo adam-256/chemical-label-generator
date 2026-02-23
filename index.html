@@ -834,45 +834,46 @@ function buildLabelDOM(labelData, cellIndex) {
     wrapper.style.flexGrow = '1';
 
     if (chem.smiles) {
-      const canvasId = `canvas-c${cellIndex}-${idx}-${Date.now()}`;
-      const canvas = document.createElement('canvas');
-      canvas.id = canvasId;
-      canvas.width = 200;
-      canvas.height = structHeight;
-      canvas.style.display = 'block';
-      wrapper.appendChild(canvas);
-
-      // Draw structure — double rAF ensures canvas is in DOM and has dimensions
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          try {
-            const drawer = new SmilesDrawer.Drawer({
-              width: 200,
-              height: structHeight,
-              bondThickness: 1.0,
-              shortBondLength: 0.85,
-              bondSpacing: 0.18 * 15,
-              atomVisualization: 'default',
-              explicitHydrogens: false,
-              terminalCarbons: false,
-              fontSizeLarge: 6,
-              fontSizeSmall: 4,
-              padding: 8
-            });
-            SmilesDrawer.parse(chem.smiles, (tree) => {
-              drawer.draw(tree, canvasId, 'light', false);
-            }, (err) => {
-              console.warn('SMILES parse error:', chem.smiles, err);
-              const ctx = canvas.getContext('2d');
-              ctx.font = '8px Arial';
-              ctx.fillStyle = '#999';
-              ctx.fillText('(parse error)', 4, structHeight / 2);
-            });
-          } catch(e) {
-            console.warn('SmilesDrawer error:', e);
-          }
+      // Use SvgDrawer — fully synchronous, no async image loading like canvas Drawer
+      try {
+        const svgDrawer = new SmilesDrawer.SvgDrawer({
+          width: 200,
+          height: structHeight,
+          bondThickness: 1.0,
+          shortBondLength: 0.85,
+          bondSpacing: 0.18 * 15,
+          atomVisualization: 'default',
+          explicitHydrogens: false,
+          terminalCarbons: false,
+          fontSizeLarge: 6,
+          fontSizeSmall: 4,
+          padding: 8
         });
-      });
+
+        const svgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svgEl.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+        svgEl.setAttribute('width', '200');
+        svgEl.setAttribute('height', String(structHeight));
+        svgEl.style.display = 'block';
+        svgEl.style.maxWidth = '100%';
+        wrapper.appendChild(svgEl);
+
+        SmilesDrawer.parse(chem.smiles, (tree) => {
+          svgDrawer.draw(tree, svgEl, 'light', false);
+        }, (err) => {
+          console.warn('SMILES parse error:', chem.smiles, err);
+          const placeholder = document.createElement('span');
+          placeholder.style.cssText = 'font-size:7px;color:#aaa;font-style:italic;padding:4px;';
+          placeholder.textContent = '[parse error]';
+          wrapper.replaceChildren(placeholder);
+        });
+      } catch(e) {
+        console.warn('SmilesDrawer SvgDrawer error:', e);
+        const placeholder = document.createElement('span');
+        placeholder.style.cssText = 'font-size:7px;color:#aaa;font-style:italic;padding:4px;';
+        placeholder.textContent = `[${chem.name || 'error'}]`;
+        wrapper.appendChild(placeholder);
+      }
     } else {
       const placeholder = document.createElement('span');
       placeholder.style.cssText = 'font-size:7px;color:#aaa;font-style:italic;padding:4px;';
