@@ -394,7 +394,8 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     grid-template-rows: repeat(5, 192px);
-    gap: 0;
+    column-gap: 18.7px;
+    row-gap: 0;
   }
 
   .label-cell {
@@ -438,8 +439,6 @@
     font-size: 11px;
     line-height: 1.2;
     margin-bottom: 4px;
-    border-bottom: 1px solid #333;
-    padding-bottom: 3px;
   }
 
   .label-body {
@@ -459,9 +458,10 @@
   .label-subheader {
     font-style: italic;
     font-size: 8px;
-    color: #333;
+    color: #444;
     margin-bottom: 2px;
-    font-weight: 600;
+    margin-top: 5px;
+    font-weight: 400;
   }
 
   .label-structures {
@@ -830,55 +830,60 @@ function buildLabelDOM(labelData, cellIndex) {
     const wrapper = document.createElement('div');
     wrapper.className = 'structure-canvas-wrapper';
     wrapper.style.height = structHeight + 'px';
-    wrapper.style.maxHeight = structHeight + 'px';
     wrapper.style.flexShrink = '1';
+    wrapper.style.flexGrow = '1';
 
     if (chem.smiles) {
       const canvasId = `canvas-c${cellIndex}-${idx}-${Date.now()}`;
       const canvas = document.createElement('canvas');
       canvas.id = canvasId;
-      canvas.width = 140;
+      canvas.width = 200;
       canvas.height = structHeight;
-      canvas.style.maxHeight = structHeight + 'px';
+      canvas.style.display = 'block';
       wrapper.appendChild(canvas);
 
-      // Draw structure
-      setTimeout(() => {
-        try {
-          const drawer = new SmilesDrawer.Drawer({
-            width: 140,
-            height: structHeight,
-            bondThickness: 1,
-            fontSize: 7,
-            padding: 4,
-            themes: {
-              light: {
-                C: '#222', O: '#e00', N: '#00a', S: '#880', P: '#a50',
-                H: '#555', DEFAULT: '#222',
-                background: 'transparent'
+      // Draw structure — use requestAnimationFrame so canvas is in DOM
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          try {
+            const drawer = new SmilesDrawer.Drawer({
+              width: 200,
+              height: structHeight,
+              bondThickness: 1.2,
+              shortBondLength: 0.85,
+              bondSpacing: 0.18 * 14,
+              atomVisualization: 'default',
+              explicitHydrogens: false,
+              terminalCarbons: false,
+              fontSize: 8,
+              padding: 6,
+              themes: {
+                light: {
+                  C: '#111', O: '#cc0000', N: '#0000cc', S: '#886600',
+                  P: '#aa5500', F: '#007700', Cl: '#007700', Br: '#882200',
+                  I: '#550077', DEFAULT: '#333',
+                  background: 'transparent'
+                }
               }
-            }
-          });
-          SmilesDrawer.parse(chem.smiles, (tree) => {
-            drawer.draw(tree, canvasId, 'light', false);
-          }, (err) => {
-            canvas.getContext('2d').fillText('?', 10, 20);
-          });
-        } catch(e) {}
-      }, 50);
+            });
+            SmilesDrawer.parse(chem.smiles, (tree) => {
+              drawer.draw(tree, canvasId, 'light', false);
+            }, () => {
+              const ctx = canvas.getContext('2d');
+              ctx.font = '8px Arial';
+              ctx.fillStyle = '#999';
+              ctx.fillText('(structure unavailable)', 4, structHeight / 2);
+            });
+          } catch(e) {
+            console.warn('SmilesDrawer error:', e);
+          }
+        });
+      });
     } else {
       const placeholder = document.createElement('span');
-      placeholder.style.cssText = 'font-size:7px;color:#999;font-style:italic;';
-      placeholder.textContent = chem.name || '—';
+      placeholder.style.cssText = 'font-size:7px;color:#aaa;font-style:italic;padding:4px;';
+      placeholder.textContent = chem.name ? `[${chem.name}]` : '—';
       wrapper.appendChild(placeholder);
-    }
-
-    // Add formula text as small label below structure
-    if (chem.formula) {
-      const fl = document.createElement('div');
-      fl.className = 'struct-label';
-      fl.innerHTML = formatFormula(chem.formula);
-      wrapper.appendChild(fl);
     }
 
     structs.appendChild(wrapper);
@@ -1113,17 +1118,20 @@ async function fetchGHS(id, cid) {
   const hazardsEl = document.getElementById(`hazards-${id}`);
   hazardsEl.innerHTML = '<span style="font-size:0.65rem;color:var(--text-muted);font-family:var(--mono);">fetching GHS…</span>';
 
-  // Use the safety data summary endpoint — smaller payload, more reliable
+  // GHS data lives in pug_view, not pug — must use this endpoint
   let data;
   try {
-    data = await pubchemGet(`/compound/cid/${cid}/JSON`);
+    const url = `https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/${cid}/JSON?heading=GHS+Classification`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    data = await res.json();
   } catch(e) {
-    // Try pug_view as fallback
+    console.warn('pug_view GHS fetch failed:', e);
+    // Try JSONP fallback
     try {
-      const base = 'https://pubchem.ncbi.nlm.nih.gov/rest/pug_view';
-      const url = `${base}/data/compound/${cid}/JSON?heading=GHS+Classification`;
-      const res = await fetch(url);
-      data = await res.json();
+      data = await fetchJSONP(
+        `https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/${cid}/JSON?heading=GHS+Classification`
+      );
     } catch(e2) {
       hazardsEl.innerHTML = '<span style="font-size:0.65rem;color:var(--text-muted);font-family:var(--mono);">GHS data unavailable</span>';
       return;
@@ -1131,10 +1139,28 @@ async function fetchGHS(id, cid) {
   }
 
   const ghsCodes = new Set();
-  // Regex search the whole JSON string for GHS pictogram codes — most reliable approach
+  // Regex the whole payload for GHS pictogram codes — robust against structure changes
   const str = JSON.stringify(data);
   const matches = str.match(/GHS0[1-9]/g);
   if (matches) matches.forEach(m => ghsCodes.add(m));
+
+  // Also try to parse the Extra field in Markup which contains the code directly
+  try {
+    const infoBlocks = data?.Record?.Section?.flatMap(s => s.Section || [])
+                            .flatMap(s => s.Section || [])
+                            .flatMap(s => s.Information || []) || [];
+    for (const info of infoBlocks) {
+      for (const swm of (info.Value?.StringWithMarkup || [])) {
+        for (const mk of (swm.Markup || [])) {
+          if (mk.Extra && /^GHS0[1-9]$/.test(mk.Extra)) ghsCodes.add(mk.Extra);
+          if (mk.URL) {
+            const m = mk.URL.match(/GHS0[1-9]/);
+            if (m) ghsCodes.add(m[0]);
+          }
+        }
+      }
+    }
+  } catch(e) {}
 
   const nameInput = document.getElementById(`chemName-${id}`);
   if (nameInput) nameInput.dataset.ghs = JSON.stringify([...ghsCodes]);
