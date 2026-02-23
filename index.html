@@ -842,37 +842,31 @@ function buildLabelDOM(labelData, cellIndex) {
       canvas.style.display = 'block';
       wrapper.appendChild(canvas);
 
-      // Draw structure — use requestAnimationFrame so canvas is in DOM
+      // Draw structure — double rAF ensures canvas is in DOM and has dimensions
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           try {
             const drawer = new SmilesDrawer.Drawer({
               width: 200,
               height: structHeight,
-              bondThickness: 1.2,
+              bondThickness: 1.0,
               shortBondLength: 0.85,
-              bondSpacing: 0.18 * 14,
+              bondSpacing: 0.18 * 15,
               atomVisualization: 'default',
               explicitHydrogens: false,
               terminalCarbons: false,
-              fontSize: 8,
-              padding: 6,
-              themes: {
-                light: {
-                  C: '#111', O: '#cc0000', N: '#0000cc', S: '#886600',
-                  P: '#aa5500', F: '#007700', Cl: '#007700', Br: '#882200',
-                  I: '#550077', DEFAULT: '#333',
-                  background: 'transparent'
-                }
-              }
+              fontSizeLarge: 6,
+              fontSizeSmall: 4,
+              padding: 8
             });
             SmilesDrawer.parse(chem.smiles, (tree) => {
               drawer.draw(tree, canvasId, 'light', false);
-            }, () => {
+            }, (err) => {
+              console.warn('SMILES parse error:', chem.smiles, err);
               const ctx = canvas.getContext('2d');
               ctx.font = '8px Arial';
               ctx.fillStyle = '#999';
-              ctx.fillText('(structure unavailable)', 4, structHeight / 2);
+              ctx.fillText('(parse error)', 4, structHeight / 2);
             });
           } catch(e) {
             console.warn('SmilesDrawer error:', e);
