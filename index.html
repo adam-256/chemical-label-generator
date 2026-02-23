@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ChemLabel Maker</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/SmilesDrawer/2.1.7/smiles-drawer.min.js"></script>
+<script src="https://unpkg.com/smiles-drawer@2.1.7/dist/smiles-drawer.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -859,7 +859,7 @@ function buildLabelDOM(labelData, cellIndex) {
         wrapper.appendChild(svgEl);
 
         SmilesDrawer.parse(chem.smiles, (tree) => {
-          svgDrawer.draw(tree, svgEl, 'light', false);
+          svgDrawer.draw(tree, svgEl, 'light', null, false);
         }, (err) => {
           console.warn('SMILES parse error:', chem.smiles, err);
           const placeholder = document.createElement('span');
@@ -1065,15 +1065,14 @@ async function lookupChem(id) {
     // Step 2: Get SMILES + formula
     let propData;
     try {
-      propData = await pubchemGet(`/compound/cid/${cid}/property/IsomericSMILES,CanonicalSMILES,MolecularFormula/JSON`);
+      propData = await pubchemGet(`/compound/cid/${cid}/property/SMILES,IsomericSMILES,CanonicalSMILES,MolecularFormula/JSON`);
     } catch(e) {
       throw new Error(`Properties lookup failed: ${e.message}`);
     }
 
     const props = propData?.PropertyTable?.Properties?.[0];
     if (!props) throw new Error('No properties returned');
-
-    const smiles = props.IsomericSMILES || props.CanonicalSMILES || '';
+    const smiles = props.IsomericSMILES || props.CanonicalSMILES || props.SMILES || '';
     const formula = props.MolecularFormula || '';
 
     // Auto-fill formula input
