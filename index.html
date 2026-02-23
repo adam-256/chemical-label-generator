@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -24,545 +23,544 @@
     --label-h: 192px; /* 2" at 96dpi */
   }
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-body {
-font-family: var(–sans);
-background: var(–bg);
-color: var(–text);
-min-height: 100vh;
-display: grid;
-grid-template-rows: auto 1fr;
-}
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr;
+  }
 
-header {
-background: var(–text);
-color: white;
-padding: 16px 32px;
-display: flex;
-align-items: baseline;
-gap: 16px;
-border-bottom: 3px solid var(–accent);
-}
-header h1 {
-font-family: var(–mono);
-font-size: 1.1rem;
-font-weight: 600;
-letter-spacing: 0.05em;
-text-transform: uppercase;
-}
-header span {
-font-family: var(–mono);
-font-size: 0.75rem;
-color: var(–accent);
-letter-spacing: 0.1em;
-}
+  header {
+    background: var(--text);
+    color: white;
+    padding: 16px 32px;
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    border-bottom: 3px solid var(--accent);
+  }
+  header h1 {
+    font-family: var(--mono);
+    font-size: 1.1rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  header span {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+  }
 
-.workspace {
-display: grid;
-grid-template-columns: 400px 1fr;
-height: calc(100vh - 57px);
-overflow: hidden;
-}
+  .workspace {
+    display: grid;
+    grid-template-columns: 400px 1fr;
+    height: calc(100vh - 57px);
+    overflow: hidden;
+  }
 
-/* –– LEFT PANEL –– */
-.panel {
-background: var(–surface);
-border-right: 1px solid var(–border);
-overflow-y: auto;
-display: flex;
-flex-direction: column;
-}
+  /* ---- LEFT PANEL ---- */
+  .panel {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
 
-.panel-section {
-padding: 20px;
-border-bottom: 1px solid var(–border);
-}
-.panel-section:last-child { border-bottom: none; }
+  .panel-section {
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .panel-section:last-child { border-bottom: none; }
 
-.section-label {
-font-family: var(–mono);
-font-size: 0.65rem;
-font-weight: 600;
-letter-spacing: 0.15em;
-text-transform: uppercase;
-color: var(–text-muted);
-margin-bottom: 14px;
-display: flex;
-align-items: center;
-gap: 8px;
-}
-.section-label::after {
-content: ‘’;
-flex: 1;
-height: 1px;
-background: var(–border);
-}
+  .section-label {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
 
-label {
-display: block;
-font-size: 0.78rem;
-font-weight: 600;
-color: var(–text-muted);
-margin-bottom: 5px;
-font-family: var(–mono);
-}
+  label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 5px;
+    font-family: var(--mono);
+  }
 
-input[type=“text”], textarea {
-width: 100%;
-padding: 8px 10px;
-border: 1px solid var(–border);
-border-radius: 3px;
-font-family: var(–mono);
-font-size: 0.82rem;
-background: var(–bg);
-color: var(–text);
-transition: border-color 0.15s;
-outline: none;
-}
-input[type=“text”]:focus, textarea:focus {
-border-color: var(–accent);
-background: white;
-}
+  input[type="text"], textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    background: var(--bg);
+    color: var(--text);
+    transition: border-color 0.15s;
+    outline: none;
+  }
+  input[type="text"]:focus, textarea:focus {
+    border-color: var(--accent);
+    background: white;
+  }
 
-.input-group { margin-bottom: 14px; }
+  .input-group { margin-bottom: 14px; }
 
-/* Chemical component */
-.chem-component {
-background: var(–bg);
-border: 1px solid var(–border);
-border-radius: 4px;
-padding: 12px;
-margin-bottom: 10px;
-position: relative;
-}
-.chem-component-header {
-display: flex;
-justify-content: space-between;
-align-items: center;
-margin-bottom: 10px;
-}
-.chem-component-label {
-font-family: var(–mono);
-font-size: 0.7rem;
-font-weight: 600;
-color: var(–text-muted);
-text-transform: uppercase;
-letter-spacing: 0.1em;
-}
-.chem-status {
-font-family: var(–mono);
-font-size: 0.65rem;
-padding: 2px 7px;
-border-radius: 10px;
-background: #e0e0e0;
-color: var(–text-muted);
-}
-.chem-status.ok { background: #d4edda; color: #155724; }
-.chem-status.loading { background: #fff3cd; color: #856404; }
-.chem-status.error { background: #f8d7da; color: #721c24; }
+  /* Chemical component */
+  .chem-component {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 12px;
+    margin-bottom: 10px;
+    position: relative;
+  }
+  .chem-component-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .chem-component-label {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .chem-status {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    padding: 2px 7px;
+    border-radius: 10px;
+    background: #e0e0e0;
+    color: var(--text-muted);
+  }
+  .chem-status.ok { background: #d4edda; color: #155724; }
+  .chem-status.loading { background: #fff3cd; color: #856404; }
+  .chem-status.error { background: #f8d7da; color: #721c24; }
 
-.btn {
-padding: 8px 14px;
-border: none;
-border-radius: 3px;
-font-family: var(–mono);
-font-size: 0.78rem;
-font-weight: 600;
-cursor: pointer;
-transition: all 0.15s;
-letter-spacing: 0.04em;
-}
-.btn-primary {
-background: var(–text);
-color: white;
-}
-.btn-primary:hover { background: #333; }
-.btn-accent {
-background: var(–accent);
-color: var(–text);
-}
-.btn-accent:hover { background: var(–accent-dark); color: white; }
-.btn-sm {
-padding: 4px 10px;
-font-size: 0.7rem;
-}
-.btn-danger {
-background: transparent;
-color: var(–danger);
-border: 1px solid var(–danger);
-}
-.btn-danger:hover { background: var(–danger); color: white; }
-.btn-ghost {
-background: transparent;
-color: var(–text-muted);
-border: 1px solid var(–border);
-}
-.btn-ghost:hover { background: var(–bg); color: var(–text); }
+  .btn {
+    padding: 8px 14px;
+    border: none;
+    border-radius: 3px;
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.04em;
+  }
+  .btn-primary {
+    background: var(--text);
+    color: white;
+  }
+  .btn-primary:hover { background: #333; }
+  .btn-accent {
+    background: var(--accent);
+    color: var(--text);
+  }
+  .btn-accent:hover { background: var(--accent-dark); color: white; }
+  .btn-sm {
+    padding: 4px 10px;
+    font-size: 0.7rem;
+  }
+  .btn-danger {
+    background: transparent;
+    color: var(--danger);
+    border: 1px solid var(--danger);
+  }
+  .btn-danger:hover { background: var(--danger); color: white; }
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { background: var(--bg); color: var(--text); }
 
-.btn-row {
-display: flex;
-gap: 8px;
-flex-wrap: wrap;
-margin-top: 10px;
-}
+  .btn-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
 
-/* GHS hazard pills */
-.hazard-list {
-display: flex;
-flex-wrap: wrap;
-gap: 5px;
-margin-top: 6px;
-min-height: 24px;
-}
-.hazard-pill {
-font-family: var(–mono);
-font-size: 0.62rem;
-padding: 2px 8px;
-background: #fff3cd;
-border: 1px solid var(–accent);
-border-radius: 2px;
-color: var(–accent-dark);
-font-weight: 600;
-}
+  /* GHS hazard pills */
+  .hazard-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 6px;
+    min-height: 24px;
+  }
+  .hazard-pill {
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    padding: 2px 8px;
+    background: #fff3cd;
+    border: 1px solid var(--accent);
+    border-radius: 2px;
+    color: var(--accent-dark);
+    font-weight: 600;
+  }
 
-/* Sheet grid */
-.sheet-container {
-display: flex;
-flex-direction: column;
-align-items: center;
-gap: 6px;
-}
-.sheet-grid {
-display: grid;
-grid-template-columns: 1fr 1fr;
-gap: 4px;
-padding: 12px;
-background: white;
-border: 1px solid var(–border);
-border-radius: 4px;
-}
-.sheet-cell {
-width: 120px;
-height: 60px;
-border: 1.5px dashed var(–border);
-border-radius: 3px;
-cursor: pointer;
-display: flex;
-align-items: center;
-justify-content: center;
-font-family: var(–mono);
-font-size: 0.6rem;
-color: var(–text-muted);
-transition: all 0.15s;
-position: relative;
-overflow: hidden;
-text-align: center;
-padding: 4px;
-}
-.sheet-cell:hover { border-color: var(–accent); color: var(–accent-dark); background: #fff8e8; }
-.sheet-cell.selected {
-border-color: var(–accent);
-border-style: solid;
-background: var(–accent);
-color: var(–text);
-font-weight: 600;
-}
-.sheet-cell.used {
-background: #f0f0f0;
-border-color: #ccc;
-border-style: solid;
-color: #aaa;
-cursor: default;
-text-decoration: line-through;
-}
-.sheet-cell.used:hover { background: #f0f0f0; color: #aaa; border-color: #ccc; }
-.cell-num {
-position: absolute;
-top: 3px;
-left: 4px;
-font-size: 0.55rem;
-opacity: 0.5;
-}
+  /* Sheet grid */
+  .sheet-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  .sheet-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    padding: 12px;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+  }
+  .sheet-cell {
+    width: 120px;
+    height: 60px;
+    border: 1.5px dashed var(--border);
+    border-radius: 3px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    transition: all 0.15s;
+    position: relative;
+    overflow: hidden;
+    text-align: center;
+    padding: 4px;
+  }
+  .sheet-cell:hover { border-color: var(--accent); color: var(--accent-dark); background: #fff8e8; }
+  .sheet-cell.selected {
+    border-color: var(--accent);
+    border-style: solid;
+    background: var(--accent);
+    color: var(--text);
+    font-weight: 600;
+  }
+  .sheet-cell.used {
+    background: #f0f0f0;
+    border-color: #ccc;
+    border-style: solid;
+    color: #aaa;
+    cursor: default;
+    text-decoration: line-through;
+  }
+  .sheet-cell.used:hover { background: #f0f0f0; color: #aaa; border-color: #ccc; }
+  .cell-num {
+    position: absolute;
+    top: 3px;
+    left: 4px;
+    font-size: 0.55rem;
+    opacity: 0.5;
+  }
 
-.sheet-hint {
-font-family: var(–mono);
-font-size: 0.65rem;
-color: var(–text-muted);
-text-align: center;
-}
-.sheet-legend {
-display: flex;
-gap: 12px;
-font-family: var(–mono);
-font-size: 0.62rem;
-color: var(–text-muted);
-margin-top: 4px;
-}
-.legend-dot {
-display: inline-block;
-width: 10px;
-height: 10px;
-border-radius: 2px;
-margin-right: 4px;
-vertical-align: middle;
-}
+  .sheet-hint {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    text-align: center;
+  }
+  .sheet-legend {
+    display: flex;
+    gap: 12px;
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+  .legend-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    margin-right: 4px;
+    vertical-align: middle;
+  }
 
-/* Footer fields */
-.footer-fields {
-display: flex;
-flex-direction: column;
-gap: 8px;
-}
-.footer-field-row {
-display: grid;
-grid-template-columns: 1fr 1fr auto;
-gap: 6px;
-align-items: center;
-}
-.preset-btns {
-display: flex;
-flex-wrap: wrap;
-gap: 5px;
-margin-bottom: 10px;
-}
-.preset-btn {
-font-family: var(–mono);
-font-size: 0.65rem;
-padding: 4px 10px;
-border: 1px solid var(–border);
-border-radius: 2px;
-background: var(–bg);
-cursor: pointer;
-color: var(–text-muted);
-transition: all 0.15s;
-}
-.preset-btn:hover, .preset-btn.active {
-background: var(–text);
-color: white;
-border-color: var(–text);
-}
+  /* Footer fields */
+  .footer-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .footer-field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 6px;
+    align-items: center;
+  }
+  .preset-btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 10px;
+  }
+  .preset-btn {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    background: var(--bg);
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all 0.15s;
+  }
+  .preset-btn:hover, .preset-btn.active {
+    background: var(--text);
+    color: white;
+    border-color: var(--text);
+  }
 
-/* –– RIGHT PANEL / PREVIEW –– */
-.preview-area {
-background: #ddd;
-overflow: auto;
-display: flex;
-flex-direction: column;
-align-items: center;
-padding: 32px;
-gap: 32px;
-background-image:
-linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
-linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
-background-size: 20px 20px;
-}
+  /* ---- RIGHT PANEL / PREVIEW ---- */
+  .preview-area {
+    background: #ddd;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px;
+    gap: 32px;
+    background-image:
+      linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
 
-.preview-header {
-display: flex;
-align-items: center;
-justify-content: space-between;
-width: 100%;
-max-width: 860px;
-}
-.preview-title {
-font-family: var(–mono);
-font-size: 0.7rem;
-font-weight: 600;
-letter-spacing: 0.15em;
-color: #666;
-text-transform: uppercase;
-}
+  .preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 860px;
+  }
+  .preview-title {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    color: #666;
+    text-transform: uppercase;
+  }
 
-/* The actual sheet representation at screen scale */
-.sheet-preview {
-background: white;
-box-shadow: 0 4px 24px rgba(0,0,0,0.18);
-position: relative;
-/* Letter: 8.5” x 11” — at 96dpi scaled to fit */
-width: 816px;  /* 8.5 * 96 */
-height: 1056px; /* 11 * 96 */
-flex-shrink: 0;
-}
+  /* The actual sheet representation at screen scale */
+  .sheet-preview {
+    background: white;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+    position: relative;
+    /* Letter: 8.5" x 11" — at 96dpi scaled to fit */
+    width: 816px;  /* 8.5 * 96 */
+    height: 1056px; /* 11 * 96 */
+    flex-shrink: 0;
+  }
 
-/* Avery 5163: 10 labels, 2 col x 5 row, 4”x2” each, margins: top 0.5”, left 0.15”, right 0.15” */
-.label-grid {
-position: absolute;
-/* At 96dpi: top=0.5”=48px, left/right=0.15”≈14px */
-top: 48px;
-left: 14px;
-right: 14px;
-display: grid;
-grid-template-columns: 1fr 1fr;
-grid-template-rows: repeat(5, 192px);
-column-gap: 18.7px;
-row-gap: 0;
-}
+  /* Avery 5163: 10 labels, 2 col x 5 row, 4"x2" each, margins: top 0.5", left 0.15", right 0.15" */
+  .label-grid {
+    position: absolute;
+    /* At 96dpi: top=0.5"=48px, left/right=0.15"≈14px */
+    top: 48px;
+    left: 14px;
+    right: 14px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: repeat(5, 192px);
+    gap: 0;
+  }
 
-.label-cell {
-width: 100%;
-height: 192px;
-border: 1px dashed #ccc;
-position: relative;
-overflow: hidden;
-display: flex;
-align-items: stretch;
-}
+  .label-cell {
+    width: 100%;
+    height: 192px;
+    border: 1px dashed #ccc;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: stretch;
+  }
 
-.label-cell.empty {
-background: transparent;
-}
+  .label-cell.empty {
+    background: transparent;
+  }
 
-.label-cell.used-cell {
-background: repeating-linear-gradient(
-45deg,
-transparent,
-transparent 6px,
-rgba(0,0,0,0.04) 6px,
-rgba(0,0,0,0.04) 12px
-);
-}
+  .label-cell.used-cell {
+    background: repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 6px,
+      rgba(0,0,0,0.04) 6px,
+      rgba(0,0,0,0.04) 12px
+    );
+  }
 
-/* The actual label content */
-.label-content {
-width: 100%;
-height: 100%;
-padding: 6px 8px 5px;
-display: flex;
-flex-direction: column;
-font-family: Arial, Helvetica, sans-serif; /* Labels use standard print fonts */
-position: relative;
-}
+  /* The actual label content */
+  .label-content {
+    width: 100%;
+    height: 100%;
+    padding: 6px 8px 5px;
+    display: flex;
+    flex-direction: column;
+    font-family: Arial, Helvetica, sans-serif; /* Labels use standard print fonts */
+    position: relative;
+  }
 
-.label-name {
-text-align: center;
-font-weight: bold;
-font-size: 11px;
-line-height: 1.2;
-margin-bottom: 4px;
-}
+  .label-name {
+    text-align: center;
+    font-weight: bold;
+    font-size: 11px;
+    line-height: 1.2;
+    margin-bottom: 4px;
+    border-bottom: 1px solid #333;
+    padding-bottom: 3px;
+  }
 
-.label-body {
-display: flex;
-flex: 1;
-gap: 6px;
-min-height: 0;
-}
+  .label-body {
+    display: flex;
+    flex: 1;
+    gap: 6px;
+    min-height: 0;
+  }
 
-.label-left {
-flex: 1;
-display: flex;
-flex-direction: column;
-min-width: 0;
-}
+  .label-left {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
 
-.label-subheader {
-font-style: italic;
-font-size: 8px;
-color: #444;
-margin-bottom: 2px;
-margin-top: 5px;
-font-weight: 400;
-}
+  .label-subheader {
+    font-style: italic;
+    font-size: 8px;
+    color: #333;
+    margin-bottom: 2px;
+    font-weight: 600;
+  }
 
-.label-structures {
-display: flex;
-flex-direction: column;
-gap: 2px;
-flex: 1;
-min-height: 0;
-}
+  .label-structures {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-height: 0;
+  }
 
-.structure-canvas-wrapper {
-flex: 1;
-min-height: 0;
-display: flex;
-align-items: center;
-justify-content: flex-start;
-}
+  .structure-canvas-wrapper {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+  }
 
-.structure-canvas-wrapper canvas {
-max-width: 100%;
-max-height: 100%;
-}
+  .structure-canvas-wrapper canvas {
+    max-width: 100%;
+    max-height: 100%;
+  }
 
-.label-right {
-width: 72px;
-flex-shrink: 0;
-display: flex;
-flex-direction: column;
-align-items: center;
-}
+  .label-right {
+    width: 72px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
 
-.hazard-symbols {
-display: flex;
-flex-direction: column;
-align-items: center;
-gap: 2px;
-flex: 1;
-width: 100%;
-}
+  .hazard-symbols {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    flex: 1;
+    width: 100%;
+  }
 
-.ghs-symbol {
-width: 36px;
-height: 36px;
-flex-shrink: 0;
-}
+  .ghs-symbol {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+  }
 
-.label-footer {
-display: flex;
-flex-wrap: wrap;
-gap: 0 10px;
-border-top: 1px solid #ccc;
-margin-top: 3px;
-padding-top: 2px;
-}
+  .label-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 10px;
+    border-top: 1px solid #ccc;
+    margin-top: 3px;
+    padding-top: 2px;
+  }
 
-.footer-item {
-font-size: 7px;
-color: #333;
-white-space: nowrap;
-}
-.footer-item strong {
-font-weight: 700;
-}
+  .footer-item {
+    font-size: 7px;
+    color: #333;
+    white-space: nowrap;
+  }
+  .footer-item strong {
+    font-weight: 700;
+  }
 
-.print-btn-row {
-display: flex;
-gap: 10px;
-align-items: center;
-}
+  .print-btn-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
 
-/* GHS SVG symbols inline */
-.ghs-svg {
-width: 100%;
-height: 100%;
-}
+  /* GHS SVG symbols inline */
+  .ghs-svg {
+    width: 100%;
+    height: 100%;
+  }
 
-/* Concentration optional display */
-.struct-label {
-font-size: 7px;
-color: #555;
-font-style: italic;
-}
+  /* Concentration optional display */
+  .struct-label {
+    font-size: 7px;
+    color: #555;
+    font-style: italic;
+  }
 
-@media print {
-body { background: white; }
-header, .workspace > .panel, .preview-header { display: none !important; }
-.workspace { display: block; height: auto; }
-.preview-area {
-background: white;
-padding: 0;
-display: block;
-}
-.sheet-preview {
-box-shadow: none;
-page-break-after: always;
-}
-.label-cell { border: 1px dashed #bbb; }
-}
+  @media print {
+    body { background: white; }
+    header, .workspace > .panel, .preview-header { display: none !important; }
+    .workspace { display: block; height: auto; }
+    .preview-area {
+      background: white;
+      padding: 0;
+      display: block;
+    }
+    .sheet-preview {
+      box-shadow: none;
+      page-break-after: always;
+    }
+    .label-cell { border: 1px dashed #bbb; }
+  }
 </style>
-
 </head>
 <body>
 
@@ -575,74 +573,71 @@ page-break-after: always;
   <!-- LEFT PANEL -->
   <div class="panel" id="panel">
 
-```
-<!-- LABEL EDITOR -->
-<div class="panel-section">
-  <div class="section-label">Label Editor</div>
+    <!-- LABEL EDITOR -->
+    <div class="panel-section">
+      <div class="section-label">Label Editor</div>
 
-  <div class="input-group">
-    <label>Label Name (Header)</label>
-    <input type="text" id="labelName" placeholder="e.g. Phosphate Buffer Saline" oninput="updatePreview()">
-  </div>
+      <div class="input-group">
+        <label>Label Name (Header)</label>
+        <input type="text" id="labelName" placeholder="e.g. Phosphate Buffer Saline" oninput="updatePreview()">
+      </div>
 
-  <div id="chemComponents"></div>
-  <button class="btn btn-ghost btn-sm" onclick="addChemComponent()">+ Add Chemical Component</button>
-</div>
-
-<!-- FOOTER FIELDS -->
-<div class="panel-section">
-  <div class="section-label">Footer Fields</div>
-  <div class="preset-btns" id="presetBtns">
-    <button class="preset-btn" onclick="addPreset('Laboratory')">Laboratory</button>
-    <button class="preset-btn" onclick="addPreset('Experiment')">Experiment</button>
-    <button class="preset-btn" onclick="addPreset('Lot #')">Lot #</button>
-    <button class="preset-btn" onclick="addPreset('Date Prepared')">Date Prepared</button>
-    <button class="preset-btn" onclick="addPreset('Prepared By')">Prepared By</button>
-    <button class="preset-btn" onclick="addPreset('Concentration')">Concentration</button>
-    <button class="preset-btn" onclick="addPreset('Expiry')">Expiry</button>
-    <button class="preset-btn" onclick="addPreset('Storage')">Storage</button>
-    <button class="preset-btn" onclick="addPreset('Custom...')">Custom…</button>
-  </div>
-  <div class="footer-fields" id="footerFields"></div>
-</div>
-
-<!-- SHEET SELECTOR -->
-<div class="panel-section">
-  <div class="section-label">Assign to Cell</div>
-  <p style="font-size:0.72rem; color:var(--text-muted); margin-bottom:12px; font-family:var(--mono);">
-    Click a cell to place this label. Right-click to mark as used/unavailable.
-  </p>
-  <div class="sheet-container">
-    <div class="sheet-grid" id="miniGrid"></div>
-    <div class="sheet-legend">
-      <span><span class="legend-dot" style="background:var(--accent);border:1px solid var(--accent-dark)"></span>Selected</span>
-      <span><span class="legend-dot" style="background:#e8e8e8;border:1px solid #ccc"></span>Used/N/A</span>
-      <span><span class="legend-dot" style="background:white;border:1.5px dashed var(--border)"></span>Available</span>
+      <div id="chemComponents"></div>
+      <button class="btn btn-ghost btn-sm" onclick="addChemComponent()">+ Add Chemical Component</button>
     </div>
-    <div class="sheet-hint">Left-click: assign label · Right-click: toggle used</div>
-  </div>
-</div>
 
-<!-- ACTIONS -->
-<div class="panel-section">
-  <div class="section-label">Actions</div>
-  <div class="btn-row">
-    <button class="btn btn-accent" onclick="addLabelToSheet()">Place Label on Sheet</button>
-    <button class="btn btn-ghost btn-sm" onclick="clearLabel()">Clear Form</button>
-  </div>
-  <div style="margin-top:12px;">
-    <div class="btn-row">
-      <button class="btn btn-primary" onclick="window.print()">🖨 Print Sheet</button>
-      <button class="btn btn-ghost btn-sm" onclick="clearSheet()">Reset Sheet</button>
+    <!-- FOOTER FIELDS -->
+    <div class="panel-section">
+      <div class="section-label">Footer Fields</div>
+      <div class="preset-btns" id="presetBtns">
+        <button class="preset-btn" onclick="addPreset('Laboratory')">Laboratory</button>
+        <button class="preset-btn" onclick="addPreset('Experiment')">Experiment</button>
+        <button class="preset-btn" onclick="addPreset('Lot #')">Lot #</button>
+        <button class="preset-btn" onclick="addPreset('Date Prepared')">Date Prepared</button>
+        <button class="preset-btn" onclick="addPreset('Prepared By')">Prepared By</button>
+        <button class="preset-btn" onclick="addPreset('Concentration')">Concentration</button>
+        <button class="preset-btn" onclick="addPreset('Expiry')">Expiry</button>
+        <button class="preset-btn" onclick="addPreset('Storage')">Storage</button>
+        <button class="preset-btn" onclick="addPreset('Custom...')">Custom…</button>
+      </div>
+      <div class="footer-fields" id="footerFields"></div>
     </div>
-  </div>
-</div>
-```
+
+    <!-- SHEET SELECTOR -->
+    <div class="panel-section">
+      <div class="section-label">Assign to Cell</div>
+      <p style="font-size:0.72rem; color:var(--text-muted); margin-bottom:12px; font-family:var(--mono);">
+        Click a cell to place this label. Right-click to mark as used/unavailable.
+      </p>
+      <div class="sheet-container">
+        <div class="sheet-grid" id="miniGrid"></div>
+        <div class="sheet-legend">
+          <span><span class="legend-dot" style="background:var(--accent);border:1px solid var(--accent-dark)"></span>Selected</span>
+          <span><span class="legend-dot" style="background:#e8e8e8;border:1px solid #ccc"></span>Used/N/A</span>
+          <span><span class="legend-dot" style="background:white;border:1.5px dashed var(--border)"></span>Available</span>
+        </div>
+        <div class="sheet-hint">Left-click: assign label · Right-click: toggle used</div>
+      </div>
+    </div>
+
+    <!-- ACTIONS -->
+    <div class="panel-section">
+      <div class="section-label">Actions</div>
+      <div class="btn-row">
+        <button class="btn btn-accent" onclick="addLabelToSheet()">Place Label on Sheet</button>
+        <button class="btn btn-ghost btn-sm" onclick="clearLabel()">Clear Form</button>
+      </div>
+      <div style="margin-top:12px;">
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="window.print()">🖨 Print Sheet</button>
+          <button class="btn btn-ghost btn-sm" onclick="clearSheet()">Reset Sheet</button>
+        </div>
+      </div>
+    </div>
 
   </div>
 
   <!-- RIGHT PANEL: PREVIEW -->
-
   <div class="preview-area">
     <div class="preview-header">
       <span class="preview-title">Sheet Preview — Avery 5163</span>
@@ -655,7 +650,6 @@ page-break-after: always;
 </div>
 
 <!-- GHS Symbol SVGs as data URIs -->
-
 <div id="ghsSymbolStore" style="display:none"></div>
 
 <script>
@@ -836,60 +830,55 @@ function buildLabelDOM(labelData, cellIndex) {
     const wrapper = document.createElement('div');
     wrapper.className = 'structure-canvas-wrapper';
     wrapper.style.height = structHeight + 'px';
+    wrapper.style.maxHeight = structHeight + 'px';
     wrapper.style.flexShrink = '1';
-    wrapper.style.flexGrow = '1';
 
     if (chem.smiles) {
       const canvasId = `canvas-c${cellIndex}-${idx}-${Date.now()}`;
       const canvas = document.createElement('canvas');
       canvas.id = canvasId;
-      canvas.width = 200;
+      canvas.width = 140;
       canvas.height = structHeight;
-      canvas.style.display = 'block';
+      canvas.style.maxHeight = structHeight + 'px';
       wrapper.appendChild(canvas);
 
-      // Draw structure — use requestAnimationFrame so canvas is in DOM
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          try {
-            const drawer = new SmilesDrawer.Drawer({
-              width: 200,
-              height: structHeight,
-              bondThickness: 1.2,
-              shortBondLength: 0.85,
-              bondSpacing: 0.18 * 14,
-              atomVisualization: 'default',
-              explicitHydrogens: false,
-              terminalCarbons: false,
-              fontSize: 8,
-              padding: 6,
-              themes: {
-                light: {
-                  C: '#111', O: '#cc0000', N: '#0000cc', S: '#886600',
-                  P: '#aa5500', F: '#007700', Cl: '#007700', Br: '#882200',
-                  I: '#550077', DEFAULT: '#333',
-                  background: 'transparent'
-                }
+      // Draw structure
+      setTimeout(() => {
+        try {
+          const drawer = new SmilesDrawer.Drawer({
+            width: 140,
+            height: structHeight,
+            bondThickness: 1,
+            fontSize: 7,
+            padding: 4,
+            themes: {
+              light: {
+                C: '#222', O: '#e00', N: '#00a', S: '#880', P: '#a50',
+                H: '#555', DEFAULT: '#222',
+                background: 'transparent'
               }
-            });
-            SmilesDrawer.parse(chem.smiles, (tree) => {
-              drawer.draw(tree, canvasId, 'light', false);
-            }, () => {
-              const ctx = canvas.getContext('2d');
-              ctx.font = '8px Arial';
-              ctx.fillStyle = '#999';
-              ctx.fillText('(structure unavailable)', 4, structHeight / 2);
-            });
-          } catch(e) {
-            console.warn('SmilesDrawer error:', e);
-          }
-        });
-      });
+            }
+          });
+          SmilesDrawer.parse(chem.smiles, (tree) => {
+            drawer.draw(tree, canvasId, 'light', false);
+          }, (err) => {
+            canvas.getContext('2d').fillText('?', 10, 20);
+          });
+        } catch(e) {}
+      }, 50);
     } else {
       const placeholder = document.createElement('span');
-      placeholder.style.cssText = 'font-size:7px;color:#aaa;font-style:italic;padding:4px;';
-      placeholder.textContent = chem.name ? `[${chem.name}]` : '—';
+      placeholder.style.cssText = 'font-size:7px;color:#999;font-style:italic;';
+      placeholder.textContent = chem.name || '—';
       wrapper.appendChild(placeholder);
+    }
+
+    // Add formula text as small label below structure
+    if (chem.formula) {
+      const fl = document.createElement('div');
+      fl.className = 'struct-label';
+      fl.innerHTML = formatFormula(chem.formula);
+      wrapper.appendChild(fl);
     }
 
     structs.appendChild(wrapper);
@@ -1124,20 +1113,17 @@ async function fetchGHS(id, cid) {
   const hazardsEl = document.getElementById(`hazards-${id}`);
   hazardsEl.innerHTML = '<span style="font-size:0.65rem;color:var(--text-muted);font-family:var(--mono);">fetching GHS…</span>';
 
-  // GHS data lives in pug_view, not pug — must use this endpoint
+  // Use the safety data summary endpoint — smaller payload, more reliable
   let data;
   try {
-    const url = `https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/${cid}/JSON?heading=GHS+Classification`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    data = await res.json();
+    data = await pubchemGet(`/compound/cid/${cid}/JSON`);
   } catch(e) {
-    console.warn('pug_view GHS fetch failed:', e);
-    // Try JSONP fallback
+    // Try pug_view as fallback
     try {
-      data = await fetchJSONP(
-        `https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/${cid}/JSON?heading=GHS+Classification`
-      );
+      const base = 'https://pubchem.ncbi.nlm.nih.gov/rest/pug_view';
+      const url = `${base}/data/compound/${cid}/JSON?heading=GHS+Classification`;
+      const res = await fetch(url);
+      data = await res.json();
     } catch(e2) {
       hazardsEl.innerHTML = '<span style="font-size:0.65rem;color:var(--text-muted);font-family:var(--mono);">GHS data unavailable</span>';
       return;
@@ -1145,28 +1131,10 @@ async function fetchGHS(id, cid) {
   }
 
   const ghsCodes = new Set();
-  // Regex the whole payload for GHS pictogram codes — robust against structure changes
+  // Regex search the whole JSON string for GHS pictogram codes — most reliable approach
   const str = JSON.stringify(data);
   const matches = str.match(/GHS0[1-9]/g);
   if (matches) matches.forEach(m => ghsCodes.add(m));
-
-  // Also try to parse the Extra field in Markup which contains the code directly
-  try {
-    const infoBlocks = data?.Record?.Section?.flatMap(s => s.Section || [])
-                            .flatMap(s => s.Section || [])
-                            .flatMap(s => s.Information || []) || [];
-    for (const info of infoBlocks) {
-      for (const swm of (info.Value?.StringWithMarkup || [])) {
-        for (const mk of (swm.Markup || [])) {
-          if (mk.Extra && /^GHS0[1-9]$/.test(mk.Extra)) ghsCodes.add(mk.Extra);
-          if (mk.URL) {
-            const m = mk.URL.match(/GHS0[1-9]/);
-            if (m) ghsCodes.add(m[0]);
-          }
-        }
-      }
-    }
-  } catch(e) {}
 
   const nameInput = document.getElementById(`chemName-${id}`);
   if (nameInput) nameInput.dataset.ghs = JSON.stringify([...ghsCodes]);
@@ -1320,6 +1288,5 @@ if (window.location.protocol === 'file:') {
   document.body.insertBefore(banner, document.body.firstChild);
 }
 </script>
-
 </body>
 </html>
