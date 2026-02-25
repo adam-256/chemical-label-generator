@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ChemLabel Maker</title>
 <script src="https://unpkg.com/smiles-drawer@2.1.7/dist/smiles-drawer.min.js"></script>
+<script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -469,7 +471,7 @@
   .label-content {
     width: 100%;
     height: 100%;
-    padding: 6px 8px 5px;
+    padding: 19px;
     display: flex;
     flex-direction: column;
     position: relative;
@@ -485,20 +487,23 @@
   .label-manufacturer {
     line-height: 1.2;
     margin-bottom: 3px;
+    text-align: center;
   }
 
   .label-body {
-    display: flex;
-    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 6px;
+    flex: 1;
     min-height: 0;
   }
 
   .label-left {
-    flex: 1;
     display: flex;
     flex-direction: column;
     min-width: 0;
+    min-height: 0;
+    overflow: hidden;
   }
 
   .label-subheader {
@@ -517,32 +522,34 @@
   }
 
   .label-structures {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
     flex: 1;
     min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding-bottom: 8px;
   }
 
   .structure-canvas-wrapper {
-    flex: 1;
     min-height: 0;
     display: flex;
-    align-items: center;
-    justify-content: flex-start;
+    align-items: flex-start;
+    justify-content: center;
+    overflow: hidden;
   }
   .structure-canvas-wrapper svg {
     max-width: 100%;
     max-height: 100%;
+    margin-top: -12px;
+    margin-bottom: -12px;
   }
 
-  /* Right hazard column — fixed width, never shrinks */
+  /* Right hazard column — fixed 80px, set by grid */
   .label-right {
-    width: 80px;
-    flex-shrink: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
+    overflow: hidden;
   }
 
   /* GHS symbols: flow left-to-right, wrap into rows, centered */
@@ -557,6 +564,7 @@
     width: 100%;
     overflow: hidden;
     box-sizing: border-box;
+    margin-top: 4px;
   }
 
   .ghs-symbol {
@@ -568,17 +576,18 @@
     flex-wrap: nowrap;
     justify-content: space-evenly;
     align-items: center;
-    border-top: 1px solid #ccc;
     margin-top: 3px;
     padding-top: 2px;
     width: 100%;
+  }
+  .label-footer.has-line {
+    border-top: 1px solid #ccc;
   }
   .footer-item {
     color: #333;
     white-space: nowrap;
     text-align: center;
   }
-  .footer-item strong { font-weight: 700; }
 
   .print-btn-row { display: flex; gap: 10px; align-items: center; }
 
@@ -653,6 +662,11 @@
         <button class="preset-btn" onclick="addPreset('Custom...')">Custom…</button>
       </div>
       <div class="footer-fields" id="footerFields"></div>
+      <div style="margin-top:10px;display:flex;align-items:center;gap:8px;">
+        <label style="margin:0;font-weight:400;color:var(--text-muted);display:flex;align-items:center;gap:6px;cursor:pointer;">
+          <input type="checkbox" id="footerLineToggle" onchange="updatePreview()"> Show separator line above footer
+        </label>
+      </div>
     </div>
 
     <!-- SHEET SELECTOR -->
@@ -682,6 +696,7 @@
       <div style="margin-top:12px;">
         <div class="btn-row">
           <button class="btn btn-primary" onclick="window.print()">🖨 Print Sheet</button>
+          <button class="btn btn-primary" onclick="downloadPDF()">📄 Download PDF</button>
           <button class="btn btn-ghost btn-sm" onclick="clearSheet()">Reset Sheet</button>
         </div>
       </div>
@@ -708,7 +723,7 @@
 // Each element: { font, size, bold, italic, underline }
 const TYPO_DEFAULTS = {
   header:       { font: 'Calibri, Arial, sans-serif', size: 16, bold: true,  italic: false, underline: false },
-  manufacturer: { font: 'Calibri, Arial, sans-serif', size: 12, bold: false, italic: false, underline: false },
+  manufacturer: { font: 'Calibri, Arial, sans-serif', size: 8, bold: false, italic: false, underline: false },
   subheader:    { font: 'Calibri, Arial, sans-serif', size: 12, bold: false, italic: true,  underline: false },
   footer:       { font: 'Calibri, Arial, sans-serif', size: 12, bold: false, italic: false, underline: false },
 };
@@ -896,6 +911,107 @@ function buildLabelGrid() {
     }
     grid.appendChild(cell);
   }
+  requestAnimationFrame(() => cropStructureSVGs());
+}
+
+function cropSvg(svgEl) {
+  try {
+    const els = Array.from(svgEl.querySelectorAll('line, path, circle, text, ellipse, rect'));
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    els.forEach(el => {
+      try {
+        const bb = el.getBBox();
+        if (bb.width === 0 && bb.height === 0) return;
+        minX = Math.min(minX, bb.x);
+        minY = Math.min(minY, bb.y);
+        maxX = Math.max(maxX, bb.x + bb.width);
+        maxY = Math.max(maxY, bb.y + bb.height);
+      } catch(e) {}
+    });
+    if (isFinite(minX) && maxX > minX) {
+      const pad = 3;
+      const vbW = maxX - minX + pad*2;
+      const vbH = maxY - minY + pad*2;
+      svgEl.setAttribute('viewBox', `${minX-pad} ${minY-pad} ${vbW} ${vbH}`);
+      svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+      svgEl.style.width = '100%';
+      svgEl.style.height = '100%';
+      const wrapper = svgEl.closest('.structure-canvas-wrapper');
+      if (wrapper) {
+        wrapper.style.aspectRatio = `${vbW} / ${vbH}`;
+        wrapper.style.flexGrow = '0';
+        wrapper.style.flexShrink = '1';
+      }
+    }
+    delete svgEl.dataset.needsCrop;
+  } catch(e) {}
+}
+
+function cropAllSvgs(root) {
+  (root || document).querySelectorAll('svg[data-needs-crop]').forEach(cropSvg);
+}
+
+/**
+ * Normalize a SmilesDrawer-rendered SVG into a tightly-cropped, origin-anchored <g>.
+ *
+ * WHY probe.getBBox() instead of per-element getBBox():
+ *   getBBox() on an individual element returns coordinates in that element's LOCAL
+ *   space — it does NOT account for transforms on ancestor <g> elements. SmilesDrawer
+ *   wraps molecule content in a centering <g transform="translate(cx,cy)">, so
+ *   scanning child elements directly yields local/near-zero coords and produces a
+ *   large dead-space gap above the visible molecule. Calling getBBox() on a *group*
+ *   DOES accumulate child transforms, giving correct SVG-root-space coordinates.
+ *
+ * eps = half max stroke-width — only enough to prevent stroke clipping at the bbox
+ * edge. No aesthetic padding is added; structures stack with zero inter-gap.
+ */
+function normalizeSvgStructure(svgEl) {
+  const svgW = parseFloat(svgEl.getAttribute('width') || '180');
+  const svgH = parseFloat(svgEl.getAttribute('height') || '55');
+
+  // Move drawable children into a probe <g> (no transform) so that probe.getBBox()
+  // returns the collective bbox in SVG-root coordinates, correctly accumulating any
+  // centering transforms SmilesDrawer applied to its inner groups.
+  // Background rects (≥80 % of canvas) and non-rendered defs/style are excluded.
+  const probe = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  const moved = [];
+  Array.from(svgEl.childNodes).forEach(n => {
+    if (n.nodeType !== 1) return;
+    const tag = n.tagName.toLowerCase();
+    if (tag === 'defs' || tag === 'style') return;
+    if (tag === 'rect') {
+      const rw = parseFloat(n.getAttribute('width')  || '0');
+      const rh = parseFloat(n.getAttribute('height') || '0');
+      if (rw >= svgW * 0.8 && rh >= svgH * 0.8) return; // full-canvas background
+    }
+    probe.appendChild(n); // moves node out of svgEl into probe
+    moved.push(n);
+  });
+  svgEl.appendChild(probe);
+
+  let bb = null;
+  try { bb = probe.getBBox(); } catch(e) {}
+
+  // Restore original structure regardless of outcome
+  moved.forEach(n => svgEl.insertBefore(n, probe));
+  svgEl.removeChild(probe);
+
+  if (!bb || bb.width === 0 || bb.height === 0) return null;
+
+  // eps: half the max stroke-width so strokes at the bbox edge are not clipped.
+  let maxSW = 0;
+  svgEl.querySelectorAll('[stroke-width]').forEach(el => {
+    if (el.closest('defs')) return;
+    const sw = parseFloat(el.getAttribute('stroke-width') || '0');
+    if (sw > 0) maxSW = Math.max(maxSW, sw);
+  });
+  const pad = Math.max(maxSW / 2, 1) + 5; // stroke-safe eps + 5px aesthetic padding
+
+  // Translate so the tight top-left (bb.x, bb.y) maps to (pad, pad).
+  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  g.setAttribute('transform', `translate(${pad - bb.x}, ${pad - bb.y})`);
+  Array.from(svgEl.childNodes).forEach(n => g.appendChild(n.cloneNode(true)));
+  return { group: g, width: bb.width + 2 * pad, height: bb.height + 2 * pad };
 }
 
 function buildLabelDOM(labelData, cellIndex) {
@@ -961,77 +1077,83 @@ function buildLabelDOM(labelData, cellIndex) {
   body.appendChild(right);
   content.appendChild(body);
 
-  // Render chemicals
+  // Render chemicals — all into one SVG, stacked with zero inter-structure gap.
+  // normalizeSvgStructure() crops each drawn SVG to its tight bbox (plus stroke-safe eps)
+  // and returns a <g> anchored at (0,0). Stacking advances yOffset by exactly that height —
+  // no extra padding or gap constant — so structures are immediately adjacent.
   const allGHS = new Set();
-  const numChems = labelData.chemicals.length;
-  const structHeight = numChems > 0 ? Math.max(40, Math.min(80, 110 / numChems)) : 80;
+  const chemWidth = 180;
+  const chemHeight = 55;
+
+  const combinedSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  combinedSvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  combinedSvg.style.display = 'block';
+  combinedSvg.style.maxWidth = '100%';
+  combinedSvg.dataset.noCrop = '1';
+
+  const tmpContainer = document.createElement('div');
+  tmpContainer.style.cssText = 'position:fixed;left:-9999px;top:0;visibility:hidden;';
+  document.body.appendChild(tmpContainer);
+
+  let yOffset = 0;
+  let maxContentW = 0;
 
   labelData.chemicals.forEach((chem) => {
-    const wrapper = document.createElement('div');
-    wrapper.className = 'structure-canvas-wrapper';
-    wrapper.style.height = structHeight + 'px';
-    wrapper.style.flexShrink = '1';
-    wrapper.style.flexGrow = '1';
-
-    if (chem.smiles) {
-      try {
-        const svgDrawer = new SmilesDrawer.SvgDrawer({
-          width: 200,
-          height: structHeight,
-          bondThickness: 1.0,
-          shortBondLength: 0.85,
-          bondSpacing: 0.18 * 15,
-          atomVisualization: 'default',
-          explicitHydrogens: false,
-          terminalCarbons: false,
-          fontSizeLarge: 6,
-          fontSizeSmall: 4,
-          padding: 8
-        });
-        const svgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        svgEl.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-        svgEl.setAttribute('width', '200');
-        svgEl.setAttribute('height', String(structHeight));
-        svgEl.style.display = 'block';
-        svgEl.style.maxWidth = '100%';
-        wrapper.appendChild(svgEl);
-        SmilesDrawer.parse(chem.smiles, (tree) => {
-          svgDrawer.draw(tree, svgEl, 'light', null, false);
-        }, (err) => {
-          console.warn('SMILES parse error:', chem.smiles, err);
-          const ph = document.createElement('span');
-          ph.style.cssText = 'font-size:7px;color:#aaa;font-style:italic;padding:4px;';
-          ph.textContent = '[parse error]';
-          wrapper.replaceChildren(ph);
-        });
-      } catch(e) {
-        console.warn('SvgDrawer error:', e);
-        const ph = document.createElement('span');
-        ph.style.cssText = 'font-size:7px;color:#aaa;font-style:italic;padding:4px;';
-        ph.textContent = `[${chem.name || 'error'}]`;
-        wrapper.appendChild(ph);
-      }
-    } else {
-      const ph = document.createElement('span');
-      ph.style.cssText = 'font-size:7px;color:#aaa;font-style:italic;padding:4px;';
-      ph.textContent = chem.name ? `[${chem.name}]` : '—';
-      wrapper.appendChild(ph);
-    }
-
-    structs.appendChild(wrapper);
     (chem.ghs || []).forEach(g => allGHS.add(g));
+    if (!chem.smiles) return;
+    try {
+      const tmpSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      tmpSvg.setAttribute('width', chemWidth);
+      tmpSvg.setAttribute('height', chemHeight);
+      tmpContainer.appendChild(tmpSvg);
+      const svgDrawer = new SmilesDrawer.SvgDrawer({
+        width: chemWidth, height: chemHeight,
+        bondThickness: 1.0, shortBondLength: 0.85,
+        bondSpacing: 0.18 * 15, atomVisualization: 'default',
+        explicitHydrogens: false, terminalCarbons: false,
+        fontSizeLarge: 6, fontSizeSmall: 4, padding: 2
+      });
+      SmilesDrawer.parse(chem.smiles, (tree) => {
+        svgDrawer.draw(tree, tmpSvg, 'light', null, false);
+        const norm = normalizeSvgStructure(tmpSvg);
+        if (!norm) return;
+        const { group, width: w, height: h } = norm;
+        maxContentW = Math.max(maxContentW, w);
+        // Place this structure at the current vertical offset; advance by exactly h.
+        // No gap constant — tight stacking means bottom of structure i = top of structure i+1.
+        const containerG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        containerG.setAttribute('transform', `translate(0, ${yOffset})`);
+        containerG.appendChild(group);
+        combinedSvg.appendChild(containerG);
+        yOffset += h;
+      }, () => {});
+    } catch(e) {}
   });
+
+  document.body.removeChild(tmpContainer);
+
+  // Scale the combined SVG to fill the available column height exactly.
+  // width/height are left as CSS percentages; viewBox + preserveAspectRatio handle scaling.
+  // xMinYMin: pin content to top-left so the first structure starts immediately below the subheader.
+  combinedSvg.setAttribute('viewBox', `0 0 ${maxContentW} ${yOffset}`);
+  combinedSvg.setAttribute('preserveAspectRatio', 'xMinYMin meet');
+  combinedSvg.style.width = '100%';
+  combinedSvg.style.height = '100%';
+
+  const structWrapper = document.createElement('div');
+  structWrapper.style.cssText = 'flex:1;min-height:0;overflow:hidden;';
+  structWrapper.appendChild(combinedSvg);
+  structs.appendChild(structWrapper);
 
   // GHS symbols — flow L→R, wrap, centered within fixed right column
   const ghsArr = Array.from(allGHS);
-  // Fit within 72px column: 2 per row max. Size so 2 f4 per row in 80px col: 4*18 + 3*2 = 78px. Larger when fewer.
-  const symSize = ghsArr.length >= 4 ? 18 : ghsArr.length === 3 ? 24 : 36;
+  const symSize = ghsArr.length >= 4 ? 28 : ghsArr.length === 3 ? 36 : 48;
   ghsArr.forEach(code => {
     const img = document.createElement('img');
     img.className = 'ghs-symbol';
     img.style.width = symSize + 'px';
     img.style.height = symSize + 'px';
-    img.src = `https://pubchem.ncbi.nlm.nih.gov/images/ghs/${code}.svg`;
+    img.src = `./ghs/${code}.svg`;
     img.title = code;
     img.onerror = function() {
       this.style.display = 'none';
@@ -1046,7 +1168,7 @@ function buildLabelDOM(labelData, cellIndex) {
   // Footer
   if (labelData.footer && labelData.footer.length > 0) {
     const footer = document.createElement('div');
-    footer.className = 'label-footer';
+    footer.className = 'label-footer' + (labelData.footerLine !== false ? ' has-line' : '');
     labelData.footer.forEach(f => {
       if (f.value) {
         const item = document.createElement('span');
@@ -1056,7 +1178,7 @@ function buildLabelDOM(labelData, cellIndex) {
         if (f.key === 'Lab') {
           item.textContent = f.value;
         } else {
-          item.innerHTML = `<strong>${f.key}:</strong> ${f.value}`;
+          item.textContent = `${f.key}: ${f.value}`;
         }
         footer.appendChild(item);
       }
@@ -1065,6 +1187,39 @@ function buildLabelDOM(labelData, cellIndex) {
   }
 
   return content;
+}
+
+
+// After label grid is in DOM, crop each structure SVG to its content bounding box
+function cropStructureSVGs() {
+  requestAnimationFrame(() => {
+    // Crop each combined structure SVG to its actual content bounds
+    document.querySelectorAll('.label-structures > div > svg:not([data-no-crop])').forEach(svgEl => {
+      try {
+        const els = Array.from(svgEl.querySelectorAll('line, path, circle, text, ellipse, rect'));
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        els.forEach(el => {
+          try {
+            const bb = el.getBBox();
+            if (bb.width === 0 && bb.height === 0) return;
+            minX = Math.min(minX, bb.x);
+            minY = Math.min(minY, bb.y);
+            maxX = Math.max(maxX, bb.x + bb.width);
+            maxY = Math.max(maxY, bb.y + bb.height);
+          } catch(e) {}
+        });
+        if (isFinite(minX) && maxX > minX) {
+          const pad = 3;
+          const vbW = maxX - minX + pad*2;
+          const vbH = maxY - minY + pad*2;
+          svgEl.setAttribute('viewBox', `${minX-pad} ${minY-pad} ${vbW} ${vbH}`);
+          svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+          svgEl.style.width = '100%';
+          svgEl.style.height = vbH + 'px';
+        }
+      } catch(e) {}
+    });
+  });
 }
 
 // ========== SMILES STRUCTURE PREVIEW (in panel) ==========
@@ -1408,7 +1563,8 @@ function collectLabel() {
     footer.push({ key: inputs[0].value.trim(), value: inputs[1].value.trim() });
   });
 
-  return { name, manufacturer, manufacturerPrefix, manufacturerShowPrefix, chemicals, footer };
+  const footerLine = document.getElementById('footerLineToggle')?.checked ?? true;
+  return { name, manufacturer, manufacturerPrefix, manufacturerShowPrefix, chemicals, footer, footerLine };
 }
 
 function updatePreview() {
@@ -1437,6 +1593,7 @@ function clearLabel() {
   document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
   addChemComponent();
   addPreset('Lot'); addPreset('Lab'); addPreset('EXP');
+  const flt = document.getElementById('footerLineToggle'); if (flt) flt.checked = false;
 }
 
 function clearSheet() {
@@ -1445,6 +1602,37 @@ function clearSheet() {
   state.selectedCell = null;
   buildMiniGrid();
   buildLabelGrid();
+}
+
+// ========== PDF EXPORT ==========
+async function downloadPDF() {
+  // Hide panel UI so only .sheet-preview appears in the capture
+  const toHide = [
+    document.querySelector('header'),
+    document.querySelector('.panel'),
+    document.querySelector('.preview-header'),
+  ].filter(Boolean);
+  toHide.forEach(el => { el.style.visibility = 'hidden'; });
+
+  try {
+    const target = document.querySelector('.sheet-preview');
+    const canvas = await html2canvas(target, {
+      scale: 3,
+      useCORS: true,           // needed for local SVG files served over HTTP
+      allowTaint: false,
+      backgroundColor: '#ffffff',
+      logging: false,
+    });
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ unit: 'pt', format: 'letter', orientation: 'portrait' });
+    const pageW = pdf.internal.pageSize.getWidth();   // 612 pt
+    const pageH = pdf.internal.pageSize.getHeight();  // 792 pt
+    pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, pageW, pageH);
+    pdf.save('ChemLabel-Sheet.pdf');
+  } finally {
+    toHide.forEach(el => { el.style.visibility = ''; });
+  }
 }
 
 init();
