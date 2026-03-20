@@ -317,9 +317,31 @@
   .footer-fields { display: flex; flex-direction: column; gap: 8px; }
   .footer-field-row {
     display: grid;
-    grid-template-columns: 1fr 1fr auto;
+    grid-template-columns: 14px 1fr 1fr auto auto;
     gap: 6px;
     align-items: center;
+  }
+  .footer-field-row.dragging { opacity: 0.35; }
+  .footer-field-row.drag-over { box-shadow: 0 -2px 0 var(--accent); }
+  .drag-handle {
+    cursor: grab;
+    color: var(--border-dark);
+    font-size: 1rem;
+    line-height: 1;
+    user-select: none;
+    text-align: center;
+  }
+  .drag-handle:active { cursor: grabbing; }
+  .pfx-toggle {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
   }
   .preset-btns {
     display: flex;
@@ -471,7 +493,7 @@
   .label-content {
     width: 100%;
     height: 100%;
-    padding: 19px;
+    padding: 15px;
     display: flex;
     flex-direction: column;
     position: relative;
@@ -492,7 +514,7 @@
 
   .label-body {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 50% 1fr;
     gap: 6px;
     flex: 1;
     min-height: 0;
@@ -513,6 +535,9 @@
     margin-top: 4px;
     font-weight: 400;
     text-align: center;
+  }
+  .label-left .label-subheader {
+    transform: none;
   }
 
   /* Reserve manufacturer row space even if empty */
@@ -574,7 +599,7 @@
   .label-footer {
     display: flex;
     flex-wrap: nowrap;
-    justify-content: space-evenly;
+    justify-content: space-between;
     align-items: center;
     margin-top: 3px;
     padding-top: 2px;
@@ -586,8 +611,16 @@
   .footer-item {
     color: #333;
     white-space: nowrap;
-    text-align: center;
+    text-align: left;
   }
+  .footer-blank {
+    display: inline-block;
+    min-width: 100px;
+    margin-left: 2px;
+  }
+
+  /* Hide cell borders during PDF capture */
+  .pdf-capture .label-cell { border: none; }
 
   .print-btn-row { display: flex; gap: 10px; align-items: center; }
 
@@ -722,10 +755,10 @@
 // ========== TYPOGRAPHY STATE ==========
 // Each element: { font, size, bold, italic, underline }
 const TYPO_DEFAULTS = {
-  header:       { font: 'Calibri, Arial, sans-serif', size: 16, bold: true,  italic: false, underline: false },
-  manufacturer: { font: 'Calibri, Arial, sans-serif', size: 8, bold: false, italic: false, underline: false },
-  subheader:    { font: 'Calibri, Arial, sans-serif', size: 12, bold: false, italic: true,  underline: false },
-  footer:       { font: 'Calibri, Arial, sans-serif', size: 12, bold: false, italic: false, underline: false },
+  header:       { font: 'Calibri, Arial, sans-serif', size: 18, bold: true,  italic: false, underline: false },
+  manufacturer: { font: 'Calibri, Arial, sans-serif', size: 10, bold: false, italic: false, underline: false },
+  subheader:    { font: 'Calibri, Arial, sans-serif', size: 13, bold: false, italic: true,  underline: false },
+  footer:       { font: 'Calibri, Arial, sans-serif', size: 13, bold: false, italic: false, underline: false },
 };
 
 const TYPO_LABELS = {
@@ -1077,11 +1110,7 @@ function buildLabelDOM(labelData, cellIndex) {
   body.appendChild(right);
   content.appendChild(body);
 
-  // Render chemicals — all into one SVG, stacked with zero inter-structure gap.
-  // normalizeSvgStructure() crops each drawn SVG to its tight bbox (plus stroke-safe eps)
-  // and returns a <g> anchored at (0,0). Stacking advances yOffset by exactly that height —
-  // no extra padding or gap constant — so structures are immediately adjacent.
-  const allGHS = new Set();
+    const allGHS = new Set();
   const chemWidth = 180;
   const chemHeight = 55;
 
@@ -1091,13 +1120,12 @@ function buildLabelDOM(labelData, cellIndex) {
   combinedSvg.style.maxWidth = '100%';
   combinedSvg.dataset.noCrop = '1';
 
+  // --- Pass 1: render each SMILES into an off-screen SVG and normalize to its tight bbox ---
   const tmpContainer = document.createElement('div');
   tmpContainer.style.cssText = 'position:fixed;left:-9999px;top:0;visibility:hidden;';
   document.body.appendChild(tmpContainer);
 
-  let yOffset = 0;
-  let maxContentW = 0;
-
+  const normList = [];
   labelData.chemicals.forEach((chem) => {
     (chem.ghs || []).forEach(g => allGHS.add(g));
     if (!chem.smiles) return;
@@ -1116,32 +1144,71 @@ function buildLabelDOM(labelData, cellIndex) {
       SmilesDrawer.parse(chem.smiles, (tree) => {
         svgDrawer.draw(tree, tmpSvg, 'light', null, false);
         const norm = normalizeSvgStructure(tmpSvg);
-        if (!norm) return;
-        const { group, width: w, height: h } = norm;
-        maxContentW = Math.max(maxContentW, w);
-        // Place this structure at the current vertical offset; advance by exactly h.
-        // No gap constant — tight stacking means bottom of structure i = top of structure i+1.
-        const containerG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        containerG.setAttribute('transform', `translate(0, ${yOffset})`);
-        containerG.appendChild(group);
-        combinedSvg.appendChild(containerG);
-        yOffset += h;
+        if (norm) normList.push(norm);
       }, () => {});
     } catch(e) {}
   });
 
   document.body.removeChild(tmpContainer);
 
-  // Scale the combined SVG to fill the available column height exactly.
-  // width/height are left as CSS percentages; viewBox + preserveAspectRatio handle scaling.
-  // xMinYMin: pin content to top-left so the first structure starts immediately below the subheader.
-  combinedSvg.setAttribute('viewBox', `0 0 ${maxContentW} ${yOffset}`);
-  combinedSvg.setAttribute('preserveAspectRatio', 'xMinYMin meet');
+  // --- Pass 2: choose the column count that maximises the scale factor ---
+  // Approximate available space for structures in the left label column.
+  // Label ≈ 384 px wide, 15 px padding each side, 6 px body gap → left col ≈ 174 px.
+  // After header / manufacturer / footer rows the structure area is roughly 90 px tall.
+  // These constants are only used to pick the best layout, not to set any pixel size.
+  const availW = 177;
+  const availH = 90;
+  const n = normList.length;
+
+  let bestScale = -1;
+  let bestCols = 1;
+  for (let c = 1; c <= n; c++) {
+    let layoutW = 0, layoutH = 0;
+    for (let r = 0; r * c < n; r++) {
+      const row = normList.slice(r * c, (r + 1) * c);
+      layoutW = Math.max(layoutW, row.reduce((s, x) => s + x.width, 0));
+      layoutH += Math.max(...row.map(x => x.height));
+    }
+    const scale = Math.min(availW / layoutW, availH / layoutH);
+    if (scale > bestScale) { bestScale = scale; bestCols = c; }
+  }
+
+  // --- Pass 3: place structures into the combined SVG using the chosen layout ---
+  let yOffset = 0;
+  let totalW = 0;
+  for (let r = 0; r * bestCols < n; r++) {
+    const row = normList.slice(r * bestCols, (r + 1) * bestCols);
+    const rowH = Math.max(...row.map(x => x.height));
+    const rowW  = row.reduce((s, x) => s + x.width, 0);
+    totalW = Math.max(totalW, rowW);
+    let xOffset = 0;
+    row.forEach(({ group, width: w, height: h }) => {
+      const containerG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      containerG.setAttribute('transform', `translate(${xOffset}, ${yOffset})`);
+      containerG.appendChild(group);
+      // Invisible sentinel rect — gives the browser concrete geometry to anchor layout
+      // computation on the containerG, which stabilises getBBox() results during normalisation.
+      const sentinel = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      sentinel.setAttribute('x', '0');
+      sentinel.setAttribute('y', '0');
+      sentinel.setAttribute('width', w);
+      sentinel.setAttribute('height', h);
+      sentinel.setAttribute('fill', 'none');
+      sentinel.setAttribute('stroke', 'none');
+      containerG.appendChild(sentinel);
+      combinedSvg.appendChild(containerG);
+      xOffset += w;
+    });
+    yOffset += rowH;
+  }
+
+  combinedSvg.setAttribute('viewBox', `0 0 ${totalW || 1} ${yOffset || 1}`);
+  combinedSvg.setAttribute('preserveAspectRatio', 'xMidYMin meet');
   combinedSvg.style.width = '100%';
   combinedSvg.style.height = '100%';
 
   const structWrapper = document.createElement('div');
-  structWrapper.style.cssText = 'flex:1;min-height:0;overflow:hidden;';
+  structWrapper.style.cssText = 'flex:1;min-height:0;overflow:hidden;display:flex;justify-content:center;align-items:flex-start;';
   structWrapper.appendChild(combinedSvg);
   structs.appendChild(structWrapper);
 
@@ -1170,18 +1237,26 @@ function buildLabelDOM(labelData, cellIndex) {
     const footer = document.createElement('div');
     footer.className = 'label-footer' + (labelData.footerLine !== false ? ' has-line' : '');
     labelData.footer.forEach(f => {
-      if (f.value) {
-        const item = document.createElement('span');
-        item.className = 'footer-item';
-        applyTypo(item, 'footer');
-        // Special keys: Lab has no prefix
-        if (f.key === 'Lab') {
-          item.textContent = f.value;
-        } else {
+      const hasValue = !!f.value;
+      const showPfx = f.showPrefix !== false;
+      if (!hasValue && (!showPfx || !f.key)) return;
+      const item = document.createElement('span');
+      item.className = 'footer-item';
+      applyTypo(item, 'footer');
+      if (showPfx && f.key) {
+        if (hasValue) {
           item.textContent = `${f.key}: ${f.value}`;
+        } else {
+          // Write-in placeholder: prefix + underline blank for handwritten entry
+          item.appendChild(document.createTextNode(`${f.key}: `));
+          const blank = document.createElement('span');
+          blank.className = 'footer-blank';
+          item.appendChild(blank);
         }
-        footer.appendChild(item);
+      } else {
+        item.textContent = f.value;
       }
+      footer.appendChild(item);
     });
     content.appendChild(footer);
   }
@@ -1486,7 +1561,7 @@ const PRESET_PLACEHOLDERS = {
 };
 
 function addPreset(preset) {
-  if (preset === 'Custom…') { addFooterField('', '', ''); return; }
+  if (preset === 'Custom…') { addFooterField('', '', '', true); return; }
   if (activePresets.has(preset)) return;
   activePresets.add(preset);
   const btn = document.getElementById(`preset-${preset}`);
@@ -1494,26 +1569,49 @@ function addPreset(preset) {
   else document.querySelectorAll('.preset-btn').forEach(b => {
     if (b.textContent.trim() === preset) b.classList.add('active');
   });
-  addFooterField(preset, '', PRESET_PLACEHOLDERS[preset] || '');
+  // Lab traditionally shows no prefix; everything else shows prefix by default
+  const showPrefix = preset !== 'Lab';
+  addFooterField(preset, '', PRESET_PLACEHOLDERS[preset] || '', showPrefix);
 }
 
-function addFooterField(key, value, placeholder) {
+function addFooterField(key, value, placeholder, showPrefix = true) {
   const container = document.getElementById('footerFields');
   const row = document.createElement('div');
   row.className = 'footer-field-row';
+  row.setAttribute('draggable', 'true');
 
+  // ── Drag handle ──
+  const handle = document.createElement('span');
+  handle.className = 'drag-handle';
+  handle.textContent = '⠿';
+  handle.title = 'Drag to reorder';
+
+  // ── Key input ──
   const keyInput = document.createElement('input');
   keyInput.type = 'text';
   keyInput.placeholder = 'Field name';
   keyInput.value = key;
   keyInput.oninput = () => updatePreview();
 
+  // ── Value input ──
   const valInput = document.createElement('input');
   valInput.type = 'text';
   valInput.placeholder = placeholder || 'Value';
   valInput.value = value;
   valInput.oninput = () => updatePreview();
 
+  // ── Prefix toggle ──
+  const pfxLabel = document.createElement('label');
+  pfxLabel.className = 'pfx-toggle';
+  pfxLabel.title = 'Show field name as prefix on label';
+  const pfxCheck = document.createElement('input');
+  pfxCheck.type = 'checkbox';
+  pfxCheck.checked = showPrefix;
+  pfxCheck.onchange = () => updatePreview();
+  pfxLabel.appendChild(pfxCheck);
+  pfxLabel.appendChild(document.createTextNode('pfx'));
+
+  // ── Remove button ──
   const removeBtn = document.createElement('button');
   removeBtn.className = 'btn btn-danger btn-sm';
   removeBtn.textContent = '✕';
@@ -1529,8 +1627,44 @@ function addFooterField(key, value, placeholder) {
     updatePreview();
   };
 
+  // ── Drag-and-drop reordering ──
+  // Only allow drag when initiated from the handle
+  let dragFromHandle = false;
+  handle.addEventListener('mousedown', () => { dragFromHandle = true; });
+  document.addEventListener('mouseup', () => { dragFromHandle = false; }, { passive: true });
+
+  row.addEventListener('dragstart', e => {
+    if (!dragFromHandle) { e.preventDefault(); return; }
+    e.dataTransfer.effectAllowed = 'move';
+    row.classList.add('dragging');
+  });
+  row.addEventListener('dragend', () => {
+    row.classList.remove('dragging');
+    document.querySelectorAll('.footer-field-row.drag-over')
+      .forEach(r => r.classList.remove('drag-over'));
+  });
+  row.addEventListener('dragover', e => {
+    e.preventDefault();
+    const dragging = document.querySelector('.footer-field-row.dragging');
+    if (dragging && dragging !== row) row.classList.add('drag-over');
+  });
+  row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+  row.addEventListener('drop', e => {
+    e.preventDefault();
+    row.classList.remove('drag-over');
+    const dragging = document.querySelector('.footer-field-row.dragging');
+    if (!dragging || dragging === row) return;
+    const rows = Array.from(container.querySelectorAll('.footer-field-row'));
+    const from = rows.indexOf(dragging);
+    const to   = rows.indexOf(row);
+    container.insertBefore(dragging, from < to ? row.nextSibling : row);
+    updatePreview();
+  });
+
+  row.appendChild(handle);
   row.appendChild(keyInput);
   row.appendChild(valInput);
+  row.appendChild(pfxLabel);
   row.appendChild(removeBtn);
   container.appendChild(row);
 }
@@ -1559,8 +1693,13 @@ function collectLabel() {
 
   const footer = [];
   document.querySelectorAll('.footer-field-row').forEach(row => {
-    const inputs = row.querySelectorAll('input');
-    footer.push({ key: inputs[0].value.trim(), value: inputs[1].value.trim() });
+    const textInputs = row.querySelectorAll('input[type="text"]');
+    const pfxCheck = row.querySelector('input[type="checkbox"]');
+    footer.push({
+      key: textInputs[0].value.trim(),
+      value: textInputs[1].value.trim(),
+      showPrefix: pfxCheck ? pfxCheck.checked : true,
+    });
   });
 
   const footerLine = document.getElementById('footerLineToggle')?.checked ?? true;
@@ -1614,8 +1753,9 @@ async function downloadPDF() {
   ].filter(Boolean);
   toHide.forEach(el => { el.style.visibility = 'hidden'; });
 
+  const target = document.querySelector('.sheet-preview');
+  target.classList.add('pdf-capture');  // hides dashed cell borders
   try {
-    const target = document.querySelector('.sheet-preview');
     const canvas = await html2canvas(target, {
       scale: 3,
       useCORS: true,           // needed for local SVG files served over HTTP
@@ -1631,6 +1771,7 @@ async function downloadPDF() {
     pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, pageW, pageH);
     pdf.save('ChemLabel-Sheet.pdf');
   } finally {
+    target.classList.remove('pdf-capture');
     toHide.forEach(el => { el.style.visibility = ''; });
   }
 }
