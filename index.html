@@ -232,6 +232,47 @@
     font-weight: 600;
   }
 
+  /* GHS manual picker */
+  .ghs-picker {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    margin-top: 6px;
+    padding: 6px;
+    background: #1a1a1a;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+  }
+  .ghs-picker-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 4px 2px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    background: var(--surface);
+    font-family: var(--mono);
+    font-size: 0.55rem;
+    color: var(--text-muted);
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
+  }
+  .ghs-picker-btn:hover {
+    border-color: var(--accent);
+    color: var(--text);
+  }
+  .ghs-picker-btn.active {
+    background: #3a2a00;
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .ghs-picker-btn img {
+    width: 28px;
+    height: 28px;
+    pointer-events: none;
+  }
+
   /* Sheet grid */
   .sheet-container {
     display: flex;
@@ -1232,6 +1273,12 @@ function buildLabelDOM(labelData, cellIndex) {
     hazardSymbols.appendChild(img);
   });
 
+  // If GHS symbols exist but no molecular structure, drop the left column and center hazard symbols
+  if (allGHS.size > 0 && normList.length === 0) {
+    left.remove();
+    body.style.gridTemplateColumns = '1fr';
+  }
+
   // Footer
   if (labelData.footer && labelData.footer.length > 0) {
     const footer = document.createElement('div');
@@ -1258,6 +1305,9 @@ function buildLabelDOM(labelData, cellIndex) {
       }
       footer.appendChild(item);
     });
+    if (footer.children.length % 2 === 0) {
+      footer.style.justifyContent = 'space-evenly';
+    }
     content.appendChild(footer);
   }
 
@@ -1366,8 +1416,12 @@ function addChemComponent() {
              oninput="onSmilesOverride(${id})">
     </div>
     <div>
-      <label>GHS Hazard Codes</label>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+        <label style="margin-bottom:0">GHS Hazard Codes</label>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="toggleGhsPicker(${id})" id="ghsPickerToggle-${id}">+ pick manually</button>
+      </div>
       <div class="hazard-list" id="hazards-${id}"></div>
+      <div class="ghs-picker" id="ghsPicker-${id}" style="display:none;"></div>
     </div>
     <div class="btn-row" style="margin-top:8px;">
       <button class="btn btn-ghost btn-sm" onclick="lookupChem(${id})">🔍 Lookup</button>
@@ -1497,6 +1551,65 @@ async function lookupChem(id) {
   }
 }
 
+function renderHazardPills(id, ghsCodes) {
+  const hazardsEl = document.getElementById(`hazards-${id}`);
+  hazardsEl.innerHTML = '';
+  if (ghsCodes.size === 0) {
+    hazardsEl.innerHTML = '<span style="font-size:0.65rem;color:var(--text-muted);font-family:var(--mono);">no GHS hazards listed</span>';
+    return;
+  }
+  ghsCodes.forEach(code => {
+    const pill = document.createElement('span');
+    pill.className = 'hazard-pill';
+    pill.textContent = code + (GHS_SYMBOLS[code] ? ' · ' + GHS_SYMBOLS[code].label : '');
+    hazardsEl.appendChild(pill);
+  });
+}
+
+function buildGhsPicker(id) {
+  const picker = document.getElementById(`ghsPicker-${id}`);
+  if (!picker || picker.children.length > 0) return;
+  Object.entries(GHS_SYMBOLS).forEach(([code, { label }]) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'ghs-picker-btn';
+    btn.id = `ghsBtn-${id}-${code}`;
+    btn.title = label;
+    btn.innerHTML = `<img src="./ghs/${code}.svg" alt="${code}"><span>${code}</span>`;
+    btn.onclick = () => toggleGhsManual(id, code);
+    picker.appendChild(btn);
+  });
+  syncGhsPickerState(id);
+}
+
+function toggleGhsPicker(id) {
+  const picker = document.getElementById(`ghsPicker-${id}`);
+  if (!picker) return;
+  const visible = picker.style.display !== 'none';
+  picker.style.display = visible ? 'none' : 'grid';
+  if (!visible) buildGhsPicker(id);
+}
+
+function toggleGhsManual(id, code) {
+  const nameInput = document.getElementById(`chemName-${id}`);
+  const current = new Set(JSON.parse(nameInput.dataset.ghs || '[]'));
+  if (current.has(code)) current.delete(code);
+  else current.add(code);
+  nameInput.dataset.ghs = JSON.stringify([...current]);
+  renderHazardPills(id, current);
+  syncGhsPickerState(id);
+  updatePreview();
+}
+
+function syncGhsPickerState(id) {
+  const nameInput = document.getElementById(`chemName-${id}`);
+  const current = new Set(JSON.parse(nameInput.dataset.ghs || '[]'));
+  Object.keys(GHS_SYMBOLS).forEach(code => {
+    const btn = document.getElementById(`ghsBtn-${id}-${code}`);
+    if (btn) btn.classList.toggle('active', current.has(code));
+  });
+}
+
 async function fetchGHS(id, cid) {
   const hazardsEl = document.getElementById(`hazards-${id}`);
   hazardsEl.innerHTML = '<span style="font-size:0.65rem;color:var(--text-muted);font-family:var(--mono);">fetching GHS…</span>';
@@ -1538,17 +1651,8 @@ async function fetchGHS(id, cid) {
   const nameInput = document.getElementById(`chemName-${id}`);
   if (nameInput) nameInput.dataset.ghs = JSON.stringify([...ghsCodes]);
 
-  hazardsEl.innerHTML = '';
-  if (ghsCodes.size === 0) {
-    hazardsEl.innerHTML = '<span style="font-size:0.65rem;color:var(--text-muted);font-family:var(--mono);">no GHS hazards listed</span>';
-    return;
-  }
-  ghsCodes.forEach(code => {
-    const pill = document.createElement('span');
-    pill.className = 'hazard-pill';
-    pill.textContent = code + (GHS_SYMBOLS[code] ? ' · ' + GHS_SYMBOLS[code].label : '');
-    hazardsEl.appendChild(pill);
-  });
+  renderHazardPills(id, ghsCodes);
+  syncGhsPickerState(id);
 }
 
 // ========== FOOTER FIELDS ==========
