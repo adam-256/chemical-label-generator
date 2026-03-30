@@ -897,6 +897,9 @@ const state = {
   selectedCell: null
 };
 
+// Custom SVG overrides for GHS symbols — persists for the session, applies to all labels
+const customGhsSvgs = {};
+
 const GHS_SYMBOLS = {
   'GHS01': { label: 'Explosive' },
   'GHS02': { label: 'Flammable' },
@@ -1167,8 +1170,10 @@ function buildLabelDOM(labelData, cellIndex) {
   document.body.appendChild(tmpContainer);
 
   const normList = [];
+  const customSvgList = [];
   labelData.chemicals.forEach((chem) => {
     (chem.ghs || []).forEach(g => allGHS.add(g));
+    if (chem.customStructureSvg) { customSvgList.push(chem.customStructureSvg); return; }
     if (!chem.smiles) return;
     try {
       const tmpSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -1253,6 +1258,13 @@ function buildLabelDOM(labelData, cellIndex) {
   structWrapper.appendChild(combinedSvg);
   structs.appendChild(structWrapper);
 
+  customSvgList.forEach(dataUrl => {
+    const img = document.createElement('img');
+    img.src = dataUrl;
+    img.style.cssText = 'max-width:100%;max-height:100%;object-fit:contain;flex-shrink:0;';
+    structs.appendChild(img);
+  });
+
   // GHS symbols — flow L→R, wrap, centered within fixed right column
   const ghsArr = Array.from(allGHS);
   const symSize = ghsArr.length >= 4 ? 28 : ghsArr.length === 3 ? 36 : 48;
@@ -1261,7 +1273,7 @@ function buildLabelDOM(labelData, cellIndex) {
     img.className = 'ghs-symbol';
     img.style.width = symSize + 'px';
     img.style.height = symSize + 'px';
-    img.src = `./ghs/${code}.svg`;
+    img.src = customGhsSvgs[code] || `./ghs/${code}.svg`;
     img.title = code;
     img.onerror = function() {
       this.style.display = 'none';
@@ -1274,7 +1286,7 @@ function buildLabelDOM(labelData, cellIndex) {
   });
 
   // If GHS symbols exist but no molecular structure, drop the left column and center hazard symbols
-  if (allGHS.size > 0 && normList.length === 0) {
+  if (allGHS.size > 0 && normList.length === 0 && customSvgList.length === 0) {
     left.remove();
     body.style.gridTemplateColumns = '1fr';
   }
@@ -1414,6 +1426,14 @@ function addChemComponent() {
       <label>SMILES override <span style="font-weight:400;color:#aaa">— paste if lookup fails</span></label>
       <input type="text" id="chemSmiles-${id}" placeholder="e.g. O  (water)   [Na+].[Cl-]  (NaCl)"
              oninput="onSmilesOverride(${id})">
+    </div>
+    <div style="margin-top:4px;display:flex;align-items:center;gap:8px;">
+      <label class="btn btn-ghost btn-sm" style="cursor:pointer;margin:0;">
+        📂 Load structure SVG
+        <input type="file" accept=".svg,image/svg+xml" style="display:none"
+               onchange="loadCustomStructureSvg(${id}, this)">
+      </label>
+      <span id="customSvgName-${id}" style="font-size:0.62rem;color:var(--text-muted);font-family:var(--mono);"></span>
     </div>
     <div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
@@ -1566,6 +1586,37 @@ function renderHazardPills(id, ghsCodes) {
   });
 }
 
+function loadCustomStructureSvg(id, inputEl) {
+  const file = inputEl.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const nameInput = document.getElementById(`chemName-${id}`);
+    nameInput.dataset.customStructureSvg = e.target.result;
+    const nameSpan = document.getElementById(`customSvgName-${id}`);
+    if (nameSpan) nameSpan.textContent = file.name;
+    const previewBox = document.getElementById(`structPreview-${id}`);
+    if (previewBox) {
+      previewBox.innerHTML = '';
+      const img = document.createElement('img');
+      img.src = e.target.result;
+      img.style.cssText = 'max-width:100%;max-height:100%;object-fit:contain;';
+      previewBox.appendChild(img);
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+function loadCustomGhsSvg(code, file, imgEl) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    customGhsSvgs[code] = e.target.result;
+    imgEl.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
 function buildGhsPicker(id) {
   const picker = document.getElementById(`ghsPicker-${id}`);
   if (!picker || picker.children.length > 0) return;
@@ -1575,7 +1626,29 @@ function buildGhsPicker(id) {
     btn.className = 'ghs-picker-btn';
     btn.id = `ghsBtn-${id}-${code}`;
     btn.title = label;
-    btn.innerHTML = `<img src="./ghs/${code}.svg" alt="${code}"><span>${code}</span>`;
+
+    const img = document.createElement('img');
+    img.src = customGhsSvgs[code] || `./ghs/${code}.svg`;
+    img.alt = code;
+
+    const codeSpan = document.createElement('span');
+    codeSpan.textContent = code;
+
+    const uploadLabel = document.createElement('label');
+    uploadLabel.title = 'Load custom SVG';
+    uploadLabel.style.cssText = 'font-size:0.5rem;cursor:pointer;color:var(--text-muted);line-height:1;';
+    uploadLabel.textContent = '📂';
+    uploadLabel.onclick = e => e.stopPropagation();
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.svg,image/svg+xml';
+    fileInput.style.display = 'none';
+    fileInput.onchange = e => loadCustomGhsSvg(code, e.target.files[0], img);
+    uploadLabel.appendChild(fileInput);
+
+    btn.appendChild(img);
+    btn.appendChild(codeSpan);
+    btn.appendChild(uploadLabel);
     btn.onclick = () => toggleGhsManual(id, code);
     picker.appendChild(btn);
   });
@@ -1791,7 +1864,8 @@ function collectLabel() {
       name: nameInput.value.trim(),
       smiles,
       formula: formulaInput.value.trim() || nameInput.dataset.formula || '',
-      ghs: JSON.parse(nameInput.dataset.ghs || '[]')
+      ghs: JSON.parse(nameInput.dataset.ghs || '[]'),
+      customStructureSvg: nameInput.dataset.customStructureSvg || ''
     });
   });
 
