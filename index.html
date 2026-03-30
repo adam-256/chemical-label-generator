@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ChemLabel Maker</title>
 <script src="https://unpkg.com/smiles-drawer@2.1.7/dist/smiles-drawer.min.js"></script>
+<script src="https://unpkg.com/openchemlib@8.8.0/full.pretty.js"></script>
 <script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
@@ -1429,8 +1430,8 @@ function addChemComponent() {
     </div>
     <div style="margin-top:4px;display:flex;align-items:center;gap:8px;">
       <label class="btn btn-ghost btn-sm" style="cursor:pointer;margin:0;">
-        📂 Load structure image
-        <input type="file" accept=".svg,.png,.jpg,.jpeg,.webp,.gif,image/*" style="display:none"
+        📂 Load structure file
+        <input type="file" accept=".mol,.sdf,.svg,.png,.jpg,.jpeg,.webp,.gif,image/*" style="display:none"
                onchange="loadCustomStructureSvg(${id}, this)">
       </label>
       <span id="customSvgName-${id}" style="font-size:0.62rem;color:var(--text-muted);font-family:var(--mono);"></span>
@@ -1589,22 +1590,51 @@ function renderHazardPills(id, ghsCodes) {
 function loadCustomStructureSvg(id, inputEl) {
   const file = inputEl.files[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const nameInput = document.getElementById(`chemName-${id}`);
-    nameInput.dataset.customStructureSvg = e.target.result;
-    const nameSpan = document.getElementById(`customSvgName-${id}`);
-    if (nameSpan) nameSpan.textContent = file.name;
-    const previewBox = document.getElementById(`structPreview-${id}`);
-    if (previewBox) {
-      previewBox.innerHTML = '';
-      const img = document.createElement('img');
-      img.src = e.target.result;
-      img.style.cssText = 'max-width:100%;max-height:100%;object-fit:contain;';
-      previewBox.appendChild(img);
-    }
-  };
-  reader.readAsDataURL(file);
+  const ext = file.name.split('.').pop().toLowerCase();
+
+  if (ext === 'mol' || ext === 'sdf' || ext === 'sd') {
+    // Parse chemical structure file → extract SMILES → feed into existing SmilesDrawer pipeline
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        let smiles;
+        if (typeof OCL === 'undefined') throw new Error('OpenChemLib not loaded');
+        if (ext === 'sdf' || ext === 'sd') {
+          const parser = new OCL.SDFileParser(e.target.result, []);
+          if (parser.next()) smiles = parser.getMolecule().toSmiles();
+        } else {
+          smiles = OCL.Molecule.fromMolfile(e.target.result).toSmiles();
+        }
+        if (!smiles) throw new Error('No structure found in file');
+        const smilesInput = document.getElementById(`chemSmiles-${id}`);
+        smilesInput.value = smiles;
+        onSmilesOverride(id);
+        const nameSpan = document.getElementById(`customSvgName-${id}`);
+        if (nameSpan) nameSpan.textContent = file.name;
+      } catch(err) {
+        alert(`Could not parse ${file.name}: ${err.message}`);
+      }
+    };
+    reader.readAsText(file);
+  } else {
+    // Image file — store as data URL and render directly
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const nameInput = document.getElementById(`chemName-${id}`);
+      nameInput.dataset.customStructureSvg = e.target.result;
+      const nameSpan = document.getElementById(`customSvgName-${id}`);
+      if (nameSpan) nameSpan.textContent = file.name;
+      const previewBox = document.getElementById(`structPreview-${id}`);
+      if (previewBox) {
+        previewBox.innerHTML = '';
+        const img = document.createElement('img');
+        img.src = e.target.result;
+        img.style.cssText = 'max-width:100%;max-height:100%;object-fit:contain;';
+        previewBox.appendChild(img);
+      }
+    };
+    reader.readAsDataURL(file);
+  }
 }
 
 function loadCustomGhsSvg(code, file, imgEl) {
