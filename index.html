@@ -1429,8 +1429,8 @@ function addChemComponent() {
     </div>
     <div style="margin-top:4px;display:flex;align-items:center;gap:8px;">
       <label class="btn btn-ghost btn-sm" style="cursor:pointer;margin:0;">
-        📂 Load structure SVG
-        <input type="file" accept=".svg,image/svg+xml" style="display:none"
+        📂 Load structure image
+        <input type="file" accept=".svg,.png,.jpg,.jpeg,.webp,.gif,image/*" style="display:none"
                onchange="loadCustomStructureSvg(${id}, this)">
       </label>
       <span id="customSvgName-${id}" style="font-size:0.62rem;color:var(--text-muted);font-family:var(--mono);"></span>
@@ -1641,7 +1641,7 @@ function buildGhsPicker(id) {
     uploadLabel.onclick = e => e.stopPropagation();
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
-    fileInput.accept = '.svg,image/svg+xml';
+    fileInput.accept = '.svg,.png,.jpg,.jpeg,.webp,.gif,image/*';
     fileInput.style.display = 'none';
     fileInput.onchange = e => loadCustomGhsSvg(code, e.target.files[0], img);
     uploadLabel.appendChild(fileInput);
