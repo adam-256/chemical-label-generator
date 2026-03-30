@@ -22,7 +22,7 @@ python -m http.server 8080
 ## File Structure
 
 ```
-index.html          ← entire application (HTML + CSS + JS, ~1760 lines)
+index.html          ← entire application (HTML + CSS + JS, ~1900 lines)
 run.bat             ← Windows helper: starts Python server + opens browser
 ghs/
   GHS01.svg         ← Explosive
@@ -124,11 +124,16 @@ This is what gets stored in `state.cells[i]` when a label is placed:
 | `init()` | Entry point. Builds UI, grid, adds default chemical component and footer presets. |
 | `buildMiniGrid()` | Renders the 10-cell mini-grid in the left panel (click to select, right-click to toggle used). |
 | `buildLabelGrid()` | Renders the full-size sheet preview on the right. Calls `buildLabelDOM()` per filled cell. |
-| `buildLabelDOM(labelData, i)` | Constructs the DOM tree for a single label. Calls SmilesDrawer, assembles GHS images, applies typography. |
+| `buildLabelDOM(labelData, i)` | Constructs the DOM tree for a single label. Calls SmilesDrawer, assembles GHS images, applies typography. When GHS symbols are present but no structure was rendered, drops the left column and centers the hazard column. |
 | `collectLabel()` | Reads all form inputs and returns a `LabelData` object. |
 | `addLabelToSheet()` | Calls `collectLabel()`, stores result in `state.cells[selectedCell]`, rebuilds both grids. |
 | `lookupChem(id)` | Fetches CID, SMILES, formula from PubChem by name. Then calls `fetchGHS()`. |
-| `fetchGHS(id, cid)` | Fetches GHS classification from PubChem `pug_view` endpoint. Parses `GHS0X` codes from JSON. |
+| `fetchGHS(id, cid)` | Fetches GHS classification from PubChem `pug_view` endpoint. Parses `GHS0X` codes from JSON. Delegates rendering to `renderHazardPills()` and `syncGhsPickerState()`. |
+| `renderHazardPills(id, ghsCodes)` | Renders the set of active GHS codes as yellow pills in the editor panel. Shared by auto-lookup and manual picker. |
+| `buildGhsPicker(id)` | Lazily builds the 3×3 GHS pictogram toggle grid for a chemical component on first open. |
+| `toggleGhsPicker(id)` | Shows/hides the manual GHS picker for a component. Calls `buildGhsPicker()` on first open. |
+| `toggleGhsManual(id, code)` | Adds or removes a single GHS code from a component's selection, then updates pills, picker state, and label preview. |
+| `syncGhsPickerState(id)` | Reflects the current `dataset.ghs` selection onto the picker button active states. |
 | `downloadPDF()` | Hides UI, captures `.sheet-preview` via html2canvas at 3× scale, saves as PDF via jsPDF. |
 | `normalizeSvgStructure(svgEl)` | Crops a SmilesDrawer-rendered SVG to its tight content bounding box. See note below. |
 | `applyTypo(el, key)` | Applies `typo[key]` font settings to a DOM element's inline style. |
@@ -193,6 +198,14 @@ Symbol size is adaptive:
 - 3 symbols → 36 px
 - 4+ symbols → 28 px
 
+### Manual GHS Selection
+
+Each chemical component has a **+ pick manually** toggle that expands a 3×3 grid of all nine GHS pictograms. Clicking a pictogram toggles it on or off; active symbols are highlighted and appear as pills in the editor. This works independently of PubChem lookup — useful for chemicals not in PubChem or when the auto-fetched hazard data is incomplete. If a lookup runs after manual selection, the picker reflects the new state (auto-lookup replaces any prior selection).
+
+### Hazard-only label layout
+
+When a label has GHS symbols but no SMILES structure (i.e. the chemical was not looked up or has no structure), the **Molecular Formula** column is omitted and the hazard symbol column expands to fill the full label body, with symbols centered.
+
 ---
 
 ## Typography System
@@ -225,6 +238,8 @@ Footer fields are drag-reorderable rows. Each row has:
 - A remove button
 
 Preset buttons (Lot, Lab, EXP, etc.) are tracked in `activePresets` (a `Set`) to prevent duplicates. The "Lab" preset defaults with prefix hidden since lab codes are typically written without a label.
+
+Footer fields use `justify-content: space-between` by default. When the rendered field count is **even**, `space-evenly` is applied instead so the gap between the first/last field and the label edge equals the gap between fields.
 
 ---
 
